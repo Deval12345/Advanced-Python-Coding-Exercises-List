@@ -1,25 +1,57 @@
+# I/O-Bound vs CPU-Bound Work in Python
+
+This file explains **why different kinds of work require different concurrency models**, and why misunderstanding this distinction leads to slow, fragile systems.
+
+This topic comes **after object memory costs** and **before concurrency models**, because concurrency only helps once you understand *what you are waiting for*.
+
+(Reference: *High Performance Python*, Concurrency chapter; *Fluent Python*, Part V)
 
 ---
 
-## 📄 `io_vs_cpu_bound.md`
+## 1. The Fundamental Performance Question (Problem First)
 
-```markdown
-# I/O-bound vs CPU-bound Work
+When a Python program is slow, engineers often ask:
 
-## Topic
-Understanding workload characteristics for concurrency.
+> “Should I use threads? async? multiprocessing?”
+
+This question is **too late**.
+
+The real first question is:
+
+> “Is my program waiting on **I/O** or on **the CPU**?”
 
 ---
 
-## Problem Scenario
-Compare tasks dominated by waiting (I/O) versus computation (CPU).
+## 2. Two Very Different Kinds of Work
+
+### I/O-Bound Work
+The program spends most of its time:
+- waiting for network responses
+- waiting for disk reads/writes
+- waiting for APIs or databases
+
+The CPU is mostly **idle**.
+
+### CPU-Bound Work
+The program spends most of its time:
+- performing calculations
+- transforming data
+- running tight loops
+
+The CPU is **busy**.
 
 ---
 
-## Code Examples
+## 3. Coding Problem #1 — I/O-Bound Task
+
+### Problem statement
+
+Simulate a task that waits on external resources.
+The CPU does almost nothing.
 
 ```python
-# I/O-bound
 import time
-time.sleep(2)
 
+def fetch_data():
+    time.sleep(2)  # simulate network delay
+    return "data"
