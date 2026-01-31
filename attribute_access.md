@@ -1,14 +1,13 @@
 # Attribute Access Control in Python  
-(`__getattr__` and `__getattribute__`)
+(__getattr__ and __getattribute__)
 
-This file explains **how Python resolves attribute access**, why Python allows interception of attribute lookup, and how this mechanism is used to solve **real coding problems** involving dynamic and lazy attributes.
+This file explains **how Python resolves attribute access**, why Python allows
+interception of attribute lookup, and how this mechanism solves **real-world
+problems involving dynamic and lazy attributes**.
 
-This topic builds directly on **descriptors** and is foundational for:
-- configuration systems
-- proxies and adapters
-- ORMs and frameworks
-- lazy-loading patterns
-- understanding Python’s object model
+This topic comes:
+- **after Descriptors** (behavior of known attributes)
+- **before ABCs** (formalizing expected behavior)
 
 (Reference: *Fluent Python*, Part IV – Chapter 19)
 
@@ -16,23 +15,24 @@ This topic builds directly on **descriptors** and is foundational for:
 
 ## 1. Why Attribute Access Control Exists (Problem First)
 
-In real programs, **not all attributes are known when a class is written**.
+In many real systems, **not all attributes are known when a class is written**.
 
-Common real-world situations:
+Examples:
 - configuration keys loaded from files or environment variables
 - feature flags added without code changes
 - proxy objects wrapping remote services
-- objects adapting legacy or third-party APIs
+- adapters over third-party or legacy APIs
 
-### The core problem
+### Core problem
 
-> How can an object respond meaningfully when an attribute is accessed **even if that attribute does not yet exist**?
+> How can an object respond meaningfully  
+> when an attribute is accessed **even if that attribute does not yet exist**?
 
 Python’s answer is **attribute access interception**.
 
 ---
 
-## 2. Python Attribute Lookup Order (Exact and Important)
+## 2. Python Attribute Lookup Order (Precise and Critical)
 
 When Python evaluates:
 
