@@ -1,28 +1,27 @@
+# Async I/O and Event Loops in Python
+
+This file explains **what an event loop is**, how it schedules asynchronous tasks,
+and why **blocking operations break async programs**.
+
+This topic builds directly on:
+- `async / await` fundamentals
+- I/O-bound vs CPU-bound work
+
+It is essential for understanding:
+- asyncio internals
+- why async scales for I/O
+- how real async frameworks work
+
+(Reference: *Fluent Python*, Part V – asyncio and event loops)
 
 ---
 
-## 📄 `asyncio_event_loop.md`
+## 1. Why Event Loops Exist (Problem First)
 
-```markdown
-# The asyncio Event Loop
+`async / await` alone is not enough.
 
-## Topic
-Event loop and cooperative multitasking.
-
----
-
-## Problem Scenario
-Run many waiting tasks efficiently without blocking.
-
----
-
-## Code Example
+Once you write:
 
 ```python
-import asyncio
-
-async def work():
-    await asyncio.sleep(1)
-
-asyncio.run(work())
-
+async def fetch():
+    await something()
