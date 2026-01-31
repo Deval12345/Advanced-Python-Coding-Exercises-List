@@ -1,4 +1,3 @@
-
 # Attribute Access Interception
 
 ## Topic
@@ -8,22 +7,24 @@ Intercepting attribute access using `__getattr__`, `__getattribute__`, attribute
 ---
 
 ## Motivation
-Some attributes are not known at class-definition time (configs, proxies, adapters). Python allows interception of attribute access so objects can dynamically respond when attributes are requested.
+Some attributes are not known at class-definition time (configuration keys, proxies, adapters). Python allows objects to dynamically respond when an attribute is requested.
 
 ---
 
 ## Attribute Lookup Order (Simplified)
+
 When `obj.attr` is evaluated:
+
 1. `obj.__getattribute__("attr")`
 2. Instance `__dict__`
-3. Class attributes & descriptors
+3. Class attributes and descriptors
 4. Base classes
 5. `__getattr__("attr")` (only if all above fail)
 
 ---
 
 ## Problem Scenario
-Build a configuration object where keys are dynamic and should appear as attributes (`config.DB_HOST`) without being predefined.
+Build a configuration object where keys come from a dictionary but should appear as attributes (`config.DB_HOST`) without being predefined.
 
 ---
 
