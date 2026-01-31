@@ -1,41 +1,41 @@
+# Descriptors — Programmable Attribute Access
 
+Descriptors explain **how attributes themselves can have behavior**.
+They are the mechanism behind `@property`, methods, ORM fields, and many
+framework-level abstractions in Python.
 
----
+This topic comes **after exception handling (EAFP)** and **before full attribute interception**,
+because descriptors operate on *known attributes*, not unknown ones.
 
-## 📄 `descriptors.md`
-
-```markdown
-# Descriptors
-
-## Topic
-Descriptor protocol (`__get__`, `__set__`, `__delete__`) for controlled attribute access.  
-(Fluent Python – Chapter 20)
+(Reference: *Fluent Python*, Part IV – Chapter 20)
 
 ---
 
-## Motivation
-Some attributes must look like normal fields but execute logic on access (computed values, validation, ORM fields).
+## 1. Why Descriptors Exist (Problem First)
+
+Many attributes in real programs are not simple stored values.
+
+Common requirements:
+- computed attributes (derived from other fields)
+- validation on assignment
+- read-only fields
+- lazy loading from external systems (DB, cache, API)
+- tracking when a field changes
+
+### The core problem
+
+> How can an attribute look like a normal field  
+> **but execute logic every time it is accessed or assigned**?
+
+Python’s answer is **descriptors**.
 
 ---
 
-## Problem Scenario
-Create a computed attribute that:
-- Is not stored
-- Is always correct
-- Is read-only
-- Uses attribute syntax
+## 2. The Descriptor Protocol (Minimal and Precise)
 
----
-
-## Code Example
+A descriptor is any object that implements one or more of:
 
 ```python
-class ExpiryDate:
-    def __get__(self, obj, objtype=None):
-        return obj.start + obj.duration
-
-class Subscription:
-    expiry_date = ExpiryDate()
-    def __init__(self, start, duration):
-        self.start = start
-        self.duration = duration
+__get__(self, obj, objtype=None)
+__set__(self, obj, value)
+__delete__(self, obj)
