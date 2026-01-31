@@ -1,44 +1,40 @@
-# Attribute Access Interception
+# Attribute Access Control in Python  
+(`__getattr__` and `__getattribute__`)
 
-## Topic
-Intercepting attribute access using `__getattr__`, `__getattribute__`, attribute lookup order, and lazy attributes.  
-(Fluent Python – Chapter 19)
+This file explains **how Python resolves attribute access**, why Python allows interception of attribute lookup, and how this mechanism is used to solve **real coding problems** involving dynamic and lazy attributes.
 
----
+This topic builds directly on **descriptors** and is foundational for:
+- configuration systems
+- proxies and adapters
+- ORMs and frameworks
+- lazy-loading patterns
+- understanding Python’s object model
 
-## Motivation
-Some attributes are not known at class-definition time (configuration keys, proxies, adapters). Python allows objects to dynamically respond when an attribute is requested.
-
----
-
-## Attribute Lookup Order (Simplified)
-
-When `obj.attr` is evaluated:
-
-1. `obj.__getattribute__("attr")`
-2. Instance `__dict__`
-3. Class attributes and descriptors
-4. Base classes
-5. `__getattr__("attr")` (only if all above fail)
+(Reference: *Fluent Python*, Part IV – Chapter 19)
 
 ---
 
-## Problem Scenario
-Build a configuration object where keys come from a dictionary but should appear as attributes (`config.DB_HOST`) without being predefined.
+## 1. Why Attribute Access Control Exists (Problem First)
+
+In real programs, **not all attributes are known when a class is written**.
+
+Common real-world situations:
+- configuration keys loaded from files or environment variables
+- feature flags added without code changes
+- proxy objects wrapping remote services
+- objects adapting legacy or third-party APIs
+
+### The core problem
+
+> How can an object respond meaningfully when an attribute is accessed **even if that attribute does not yet exist**?
+
+Python’s answer is **attribute access interception**.
 
 ---
 
-## Code Example
+## 2. Python Attribute Lookup Order (Exact and Important)
+
+When Python evaluates:
 
 ```python
-class Config:
-    def __init__(self, source):
-        self._source = source
-        self._cache = {}
-
-    def __getattr__(self, name):
-        if name in self._source:
-            value = self._source[name]
-            self._cache[name] = value
-            return value
-        raise AttributeError(name)
+obj.name
