@@ -141,7 +141,7 @@ If it works with a generator, your design is correct.
 
 ## Section 3 --- Trust-Based Design Philosophy
 
-Python follows the "consenting adults" principle.
+Python follows the "trust based design" principle.
 
 It trusts developers instead of enforcing strict walls.
 
