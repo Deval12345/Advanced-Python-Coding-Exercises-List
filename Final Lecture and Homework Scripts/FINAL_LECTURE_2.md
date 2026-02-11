@@ -127,27 +127,6 @@ That's duck typing.
 
 ------------------------------------------------------------------------
 
-## Section 3 --- Trust-Based Design Philosophy
-
-Python follows the "trust based design" principle.
-
-It trusts developers instead of enforcing strict walls.
-
-### Code
-
-``` python
-class Account:
-    def __init__(self):
-        self._balance = 100  # protected by convention
-```
-
-The underscore signals intent --- not restriction.
-
-Python encourages discipline instead of policing behavior.
-
-This trust model aligns perfectly with protocols.
-
-------------------------------------------------------------------------
 
 ## Section 4 --- Behavior-Driven Design
 
