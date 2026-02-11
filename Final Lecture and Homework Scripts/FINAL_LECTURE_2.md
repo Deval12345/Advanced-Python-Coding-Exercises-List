@@ -200,12 +200,6 @@ log(MemoryBuffer())
 
 Type checkers enforce the protocol. Runtime remains flexible.
 
-### Exercise 2 --- In-Class Guidance
-
-Define a `Serializer` protocol. Update `save()` to use it.
-
-Goal: improve clarity and tooling, not runtime behavior.
-
 ------------------------------------------------------------------------
 
 ## Final Takeaways
