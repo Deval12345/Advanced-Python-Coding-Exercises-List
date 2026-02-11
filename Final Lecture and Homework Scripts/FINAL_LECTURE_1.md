@@ -172,13 +172,11 @@ So now x in custom_list works naturally.
 Finally:
 
 def __iter__(self):  
-This is huge. This allows for x in custom_list.
-
 We simply return the iterator of the internal list.
 
 The takeaway here is powerful:
 
-Python doesn’t care what your object is — only what methods it implements.
+Python doesn’t care what your object is — only what methods it implements. The input argument item to the constructor could be any type, as long as it supports the operations the class expects. In real systems, that item could be a file handle, a network socket, a database connection, a string buffer, a sensor stream, API response stream or even a mock object used for testing — Python treats them the same if they behave the same.
 
 ## 3. Special Methods as Syntax Glue
 
