@@ -18,7 +18,7 @@ By the end of this session:
 
 - You’ll understand Python as an object-centric framework.
 - You’ll know how normal syntax like len(x) or x[i] maps to special methods.
-- You’ll see duck typing in action — real duck typing, not buzzwords.
+- You’ll see duck typing in action. 
 - You’ll learn how to design your own objects so they behave like built-ins.
 - And finally, you’ll understand operator overloading in a responsible way.
 
