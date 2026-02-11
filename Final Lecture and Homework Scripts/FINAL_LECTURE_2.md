@@ -125,18 +125,6 @@ Python never checked their type. Only behavior mattered.
 
 That's duck typing.
 
-### Exercise 1 --- In-Class Guidance
-
-Write `head(iterable, n)`.
-
-Rules:
-
--   don't check types
--   assume only iterability
--   test with list, tuple, generator
-
-If it works with a generator, your design is correct.
-
 ------------------------------------------------------------------------
 
 ## Section 3 --- Trust-Based Design Philosophy
