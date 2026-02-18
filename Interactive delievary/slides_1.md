@@ -1,161 +1,80 @@
 Slide 1
-Title: Python Data Model Introduction
+Title: Python Data Model as Framework Interface
 
-Point 1: Lesson introduction
-Point 2: Python Data Model also called magic methods or dunder methods
-Point 3: Python as a framework where objects are the real interface
+Point 1: Python Data Model, also known as magic methods or dunder methods
+Point 2: Python is a framework whose real interface is objects
+Point 3: Objects plug into Python syntax by implementing certain methods
+Point 4: Python syntax can be mentally translated into method calls
 
 Slide 2
-Title: Python as a Framework Interface
-
-Point 1: Plug into Python syntax by implementing certain methods
-Point 2: Translate normal Python syntax into method calls
-
-Slide 3
 Title: Learning Objectives
 
-Point 1: Session outcomes overview
-Point 2: Syntax mapping to special methods, duck typing, custom objects, operator overloading
-Point 3: Mechanism behind libraries feeling native to Python
+Point 1: Understand Python as an object centric framework
+Point 2: Map normal syntax to special methods
+Point 3: See duck typing in action
+Point 4: Design objects that behave like built in types
+Point 5: Understand operator overloading responsibly
+Point 6: Understand how libraries integrate natively with Python
+
+Slide 3
+Title: Syntax as Special Method Dispatch
+
+Point 1: Objects participate in syntax by implementing specific methods
+Point 2: Calling len maps to a special len method
+Point 3: Different types follow the same protocol for len
+Point 4: Indexing maps to get item
+Point 5: For loop relies on iter
+Point 6: In keyword relies on contains
+Point 7: Syntax is surface sugar over special methods
 
 Slide 4
-Title: Mindset Shift About Syntax
+Title: Designing List Like Custom Objects
 
-Point 1: Mindset shift
-Point 2: Objects participate in syntax by implementing certain methods
+Point 1: Custom objects can behave like lists without inheritance
+Point 2: Real systems may wrap data but still expose list behavior
+Point 3: List operations are enabled by corresponding special methods
 
 Slide 5
-Title: Syntax to Special Method Mapping
-
-Point 1: len maps to special len method
-Point 2: Indexing maps to get item method
-Point 3: for loop uses iter method
-Point 4: in keyword uses contains method
-Point 5: Syntax is surface sugar, special methods do real work
-
-Slide 6
-Title: Building a List Like Custom Object
-
-Point 1: Transition to concrete example
-Point 2: Custom object behaves like list without inheriting
-Point 3: Real world wrapping scenarios
-Point 4: Identify list operations and enabling special methods
-
-Slide 7
-Title: CustomList Initialization and State
-
-Point 1: Code block introduction
-Point 2: Define CustomList class
-Point 3: Define init method
-Point 4: Store internal list as private state
-Point 5: External interface remains list like
-
-Slide 8
-Title: Enabling Length and Indexing
-
-Point 1: Define len method
-Point 2: Delegate length to internal list
-Point 3: Define get item method
-Point 4: Return indexed element from internal list
-
-Slide 9
-Title: Enabling Containment and Iteration
-
-Point 1: Define contains method
-Point 2: Delegate containment to internal list
-Point 3: Define iter method
-Point 4: Return iterator of internal list
-
-Slide 10
-Title: Key Takeaway About Behavior
+Title: Behavior Over Type
 
 Point 1: Python cares about implemented methods, not object type
+Point 2: Constructor inputs can be any type supporting expected operations
+Point 3: Objects are treated the same if they behave the same
 
-Slide 11
+Slide 6
 Title: Operators as Method Calls
 
-Point 1: Transition to operator mapping
-Point 2: Addition maps to add method
-Point 3: Indexing maps to get item method
-Point 4: len maps to len method
-Point 5: Operators are method calls with elegant syntax
+Point 1: Addition maps to add method call
+Point 2: Indexing maps to get item
+Point 3: Len maps to len method
+Point 4: Operators are method calls with elegant syntax
+Point 5: Operator overloading can be misused
+Point 6: Operator behavior should match user expectations
 
-Slide 12
-Title: Responsible Operator Overloading
+Slide 7
+Title: Duck Typing Principle
 
-Point 1: Operator overloading can be abused
-Point 2: Follow user expectations for operator behavior
+Point 1: Behavior determines type treatment
+Point 2: Functions rely on behavioral expectations, not explicit checks
 
-Slide 13
-Title: Duck Typing Concept
+Slide 8
+Title: Lazy Objects and Memory Efficiency
 
-Point 1: Introduce duck typing
-Point 2: Behavior defines type
-Point 3: Code block introduction
+Point 1: Indexing without loading entire data into memory
+Point 2: Objects can act like lists while using constant memory
 
-Slide 14
-Title: Duck Typing in Practice
+Slide 9
+Title: Interchangeable Behavior via Shared Methods
 
-Point 1: Define analyze function without type checks
-Point 2: Convert source to list requiring iterability
-Point 3: Compute line count, word count, first line
-Point 4: Works with any iterable, behavioral expectations only
+Point 1: Strategies can be swapped without conditional logic
+Point 2: Shared method defines the contract
+Point 3: Polymorphism through behavior without inheritance
 
-Slide 15
-Title: Motivation for Lazy Indexing
+Slide 10
+Title: Why the Data Model Matters
 
-Point 1: Transition to new idea
-Point 2: Avoid loading entire large file
-Point 3: Code block introduction
-
-Slide 16
-Title: LazyFileLoader Initialization
-
-Point 1: Define LazyFileLoader class
-Point 2: Define init method
-Point 3: Store filename without loading data
-
-Slide 17
-Title: LazyFileLoader Indexing Logic
-
-Point 1: Define get item method
-Point 2: Open file
-Point 3: Iterate line by line
-Point 4: Check index match
-Point 5: Return stripped line
-Point 6: Raise IndexError if not found
-Point 7: List like behavior with constant memory
-
-Slide 18
-Title: Strategy Pattern Motivation
-
-Point 1: Transition to real world pattern
-Point 2: Interchangeable discount strategies
-Point 3: Code block introduction
-
-Slide 19
-Title: Discount Strategy Implementations
-
-Point 1: Define Discount10 class
-Point 2: Define apply method for Discount10
-Point 3: Return price times zero point nine
-Point 4: Define Discount20 class
-Point 5: Define apply method for Discount20
-Point 6: Return price times zero point eight
-
-Slide 20
-Title: Behavior Based Strategy Contract
-
-Point 1: Shared apply method as contract
-Point 2: Checkout calls apply without conditional logic
-
-Slide 21
-Title: Final Takeaways
-
-Point 1: Lesson wrap up
-Point 2: Special methods are Python itself
-Point 3: Interface between objects and syntax
-Point 4: Data model understanding improves design
-Point 5: Recognize patterns in frameworks and production
-Point 6: Foundation for next lessons
-Point 7: Closing remark
+Point 1: Special methods are core to Python
+Point 2: They connect objects to Python syntax
+Point 3: Understanding the data model improves design and expressiveness
+Point 4: These patterns appear across frameworks and libraries
+Point 5: This foundation supports future learning
