@@ -1,61 +1,113 @@
-The Python Data Model, also called magic methods or dunder methods, defines how objects interact with Python syntax. It is the underlying protocol that connects your objects to built in operations like len, indexing, iteration, and operators.
+Alright everyone, let us get started.
 
-Python is best understood as an object centric framework. Its real API is not standalone functions. It is objects that implement specific methods. Syntax works only because objects implement expected behaviors.
+Today we are going to talk about something that quietly powers everything you do in Python, the Python Data Model, also called magic methods or dunder methods.
 
-By the end of this session, you should be able to mentally translate common Python syntax like len of x, x at index i, or x plus y into the special method calls that Python performs internally.
+Python is actually a framework, and the API of that framework is objects.
 
-Python does not introduce new syntax for new features. Instead, it enables syntax participation through method implementation. If an object implements specific special methods, Python allows it to integrate into built in syntax.
+By the end of this lesson, you should be able to mentally translate normal Python syntax into method calls.
 
-The expression len of x works because Python checks whether x implements the special dunder method len and calls it if available.
+Understand Python as an object centric framework.
 
-Indexing syntax like x at index i works because Python translates it into a call to the special dunder method getitem on the object.
+See how syntax like len of x maps to special methods.
 
-A for loop over an object requires the object to implement the special dunder method iter, which provides an iterator.
+Observe duck typing in action.
 
-The membership test using the in keyword works when the object implements the special dunder method contains.
+Design objects that behave like built ins.
 
-A custom class can behave like a built in container if it implements the special methods that unlock container behavior. Python does not require inheritance from list to enable list like functionality.
+Understand responsible operator overloading.
 
-The special dunder method init initializes object state. Here, an internal attribute named data stores the actual list. The leading underscore indicates intended internal use.
+Python enables syntax participation through special methods.
 
-The special dunder method len enables len syntax on a custom object by returning the container size.
+If your object implements specific methods, Python allows it to participate in built in syntax.
 
-The special dunder method getitem enables square bracket indexing, allowing access using an index value.
+Here we define a class named LengthExample.
 
-The special dunder method contains enables membership testing using the in keyword.
+Inside it, we implement the special dunder method len.
 
-The special dunder method iter enables iteration by returning an iterator over the internal data.
+The class stores values inside a variable named valueStore.
 
-Python evaluates objects based on behavior, not type. If an object implements required methods, it is accepted. The constructor argument can be any type that supports expected operations.
+The special dunder method len returns the length of valueStore.
 
-Operators in Python are translated into method calls. An expression like x plus y becomes a call to the special dunder method add on x with y as the argument.
+Because the class defines the special dunder method len, calling len on an instance triggers that method and returns the computed length.
 
-Indexing and built in functions are also method based transformations. Accessing an index maps to the special dunder method getitem, and calling len maps to the special dunder method len.
+len of x maps to x dot special dunder method len.
 
-Operator overloading allows redefining behavior of operators, but it must align with user expectations to maintain clarity and correctness.
+Here we define a class named IndexContainer.
 
-Duck typing means behavior determines compatibility. If an object implements required methods, it can be used in that context without explicit type checks.
+Inside it, we implement the special dunder method getitem.
 
-A function like analyze depends only on behaviors such as iterability, length support, and string like elements.
+The class stores values inside a variable named dataStore.
 
-Calling len on a collection depends on the special dunder method len, and calling split on each line assumes that each element behaves like a string.
+The special dunder method getitem returns the value at a given index.
 
-Duck typing avoids inheritance hierarchies and type checks. It relies purely on method presence and consistent behavior.
+Because the class defines the special dunder method getitem, accessing an instance using square bracket syntax translates into a method call that retrieves the indexed value.
 
-An object can provide indexing behavior without storing all data in memory by implementing the special dunder method getitem dynamically.
+A for loop over an object maps to the special dunder method iter.
 
-A lazy file loader can store only a filename and load data on demand during indexing.
+Here we define a class named IterableExample.
 
-Raising an index error is required for invalid indices because Python expects this exception to signal failed indexing.
+Inside it, we implement the special dunder method iter.
 
-This design enables lazy evaluation and constant memory usage while maintaining familiar list like syntax.
+The class stores values inside a variable named dataStore.
 
-The strategy plug in pattern uses interchangeable objects that expose the same method, allowing flexible behavior without conditionals.
+The special dunder method iter returns an iterator over dataStore.
 
-A method named apply acts as a behavioral contract. Any object that defines a method named apply taking self and price can function as a discount strategy.
+Because the class defines the special dunder method iter, a loop can obtain an iterator from the instance and iterate over its values.
 
-This design relies on duck typing. No inheritance or base class is required. Only consistent method naming and behavior are needed.
+The in keyword maps to the special dunder method contains.
 
-Special methods form the interface between user defined objects and Python syntax. They are foundational, not advanced.
+Here we define a class named ContainmentExample.
 
-Understanding the data model makes Python predictable. Syntax becomes readable as method calls, improving design clarity and expressiveness.
+Inside it, we implement the special dunder method contains.
+
+The class stores values inside a variable named dataStore.
+
+The special dunder method contains returns a Boolean indicating membership.
+
+Because the class defines the special dunder method contains, using the in keyword on an instance triggers that method to determine membership.
+
+If a class implements the special dunder method len, the special dunder method getitem, the special dunder method contains, and the special dunder method iter, the object can behave like a native container.
+
+Operators map to special dunder methods.
+
+For example, addition maps to the special dunder method add.
+
+Here we define a class named PriceValue.
+
+Inside it, we implement the special dunder method add.
+
+The class stores a numeric value inside a variable named amount.
+
+The special dunder method add returns a new instance of PriceValue with the combined amount.
+
+Because the class defines the special dunder method add, using the plus operator between two instances invokes that method and produces a new PriceValue.
+
+Behavior matters more than type.
+
+Objects are accepted based on the methods they implement, not based on inheritance.
+
+Here we define a class named DataStream.
+
+Inside it, we implement the special dunder method iter.
+
+The class stores values inside a variable named dataStore.
+
+The special dunder method iter returns an iterator over dataStore.
+
+Because the class defines the special dunder method iter, it behaves like an iterable and can be used anywhere an iterable is expected.
+
+Indexing is enabled through the special dunder method getitem, allowing objects to compute values lazily when accessed by index.
+
+Objects that share the same method signature can act as interchangeable strategies.
+
+Here we define a class named DiscountStrategy.
+
+Inside it, we define a method named apply.
+
+The class stores a value inside a variable named rate.
+
+The apply method returns a modified value based on the rate.
+
+Because the class defines a method named apply, any object that implements apply with the same structure can be injected and used as a strategy.
+
+Special methods act as the interface between your objects and Python syntax.
