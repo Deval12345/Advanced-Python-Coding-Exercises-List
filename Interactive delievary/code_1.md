@@ -1,70 +1,79 @@
-## Module 1
+Example 2.2
+Line 1: class A:
+Line 2:     def __len__(self): return 5
+Line 3: len(A())
 
-```python
-class CustomList:                         # Line 1
-    def __init__(self, data):              # Line 2
-        self._data = list(data)            # Line 3
+Example 2.3
+Line 1: class B:
+Line 2:     def __getitem__(self, i): return i * 10
+Line 3: B()[2]
 
+Example 2.4
+Line 1: class C:
+Line 2:     def __iter__(self): return iter([1, 2, 3])
+Line 3: list(C())
 
-    def __len__(self):                     # Line 6
-        return len(self._data)             # Line 7
+Example 2.5
+Line 1: class D:
+Line 2:     def __contains__(self, x): return x == 5
+Line 3: 5 in D()
 
+Example 3.2
+Line 1: class E:
+Line 2:     def __init__(self): self._data = [1, 2, 3]
+Line 3: E()._data
 
-    def __getitem__(self, index):          # Line 10
-        return self._data[index]           # Line 11
+Example 3.3
+Line 1: class F:
+Line 2:     def __len__(self): return 4
+Line 3: len(F())
 
+Example 3.4
+Line 1: class G:
+Line 2:     def __getitem__(self, i): return "A"
+Line 3: G()[2]
 
-    def __contains__(self, item):          # Line 14
-        return item in self._data          # Line 15
+Example 3.5
+Line 1: class H:
+Line 2:     def __contains__(self, x): return True
+Line 3: "x" in H()
 
+Example 3.6
+Line 1: class I:
+Line 2:     def __iter__(self): return iter(["a", "b"])
+Line 3: list(I())
 
-    def __iter__(self):                    # Line 18
-        return iter(self._data)            # Line 19
-```
+Example 3.7
+Line 1: def consume(x):
+Line 2:     return list(x)
+Line 3: consume((i for i in range(3)))
 
----
+Example 4.1
+Line 1: class J:
+Line 2:     def __add__(self, other): return "added"
+Line 3: J() + J()
 
-## Module 2
+Example 5.2
+Line 1: def collect(x):
+Line 2:     return list(x)
+Line 3: collect(["a", "b"])
 
-```python
-def analyze(source):                                       # Line 1
-    lines = list(source)                                   # Line 2
-    return {                                               # Line 3
-        "line_count": len(lines),                          # Line 4
-        "word_count": sum(len(line.split()) for line in lines),  # Line 5
-        "first_line": lines[0] if lines else None          # Line 6
-    }
-```
+Example 5.3
+Line 1: def count_words(lines):
+Line 2:     return sum(len(line.split()) for line in lines)
+Line 3: count_words(["hello world"])
 
----
+Example 6.2
+Line 1: class K:
+Line 2:     def __getitem__(self, i): return i
+Line 3: K()[3]
 
-## Module 3
+Example 6.3
+Line 1: class L:
+Line 2:     def __getitem__(self, i): raise IndexError
+Line 3: L()[1]
 
-```python
-class LazyFileLoader:                       # Line 1
-    def __init__(self, filename):           # Line 2
-        self.filename = filename            # Line 3
-
-
-    def __getitem__(self, index):           # Line 6
-        with open(self.filename) as f:      # Line 7
-            for i, line in enumerate(f):    # Line 8
-                if i == index:              # Line 9
-                    return line.strip()     # Line 10
-        raise IndexError                    # Line 11
-```
-
----
-
-## Module 4
-
-```python
-class Discount10:               # Line 1
-    def apply(self, price):     # Line 2
-        return price * 0.9      # Line 3
-
-
-class Discount20:               # Line 6
-    def apply(self, price):     # Line 7
-        return price * 0.8      # Line 8
-```
+Example 7.2
+Line 1: class M:
+Line 2:     def apply(self, price): return price * 0.9
+Line 3: M().apply(100)
