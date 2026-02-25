@@ -27,8 +27,10 @@ def analyze(source):                            # Module 2 Line 1
     lines = list(source)                        # Module 2 Line 2
     return {                                    # Module 2 Line 3
         "line_count": len(lines),               # Module 2 Line 4
-        "word_count": sum(len(line.split())     # Module 2 Line 5
-                           for line in lines),
+        "word_count": sum(
+            len(line.split())                   # Module 2 Line 5
+            for line in lines
+        ),
         "first_line": lines[0] if lines else None  # Module 2 Line 6
     }                                           # Module 2 Line 7
 
