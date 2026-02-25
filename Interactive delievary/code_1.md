@@ -1,78 +1,70 @@
-# Code Module 1 – Basic len Example
+## Module 1
 
-numbers = [1, 2, 3]  # Module 1 Line 1
-len(numbers)  # Module 1 Line 2
-
-
-# Code Module 2 – Indexing Example
-
-numbers = [10, 20, 30]  # Module 2 Line 1
-value = numbers[1]  # Module 2 Line 2
+```python
+class CustomList:                         # Line 1
+    def __init__(self, data):              # Line 2
+        self._data = list(data)            # Line 3
 
 
-# Code Module 3 – Iteration Example
-
-for item in numbers:  # Module 3 Line 1
-    print(item)  # Module 3 Line 2
+    def __len__(self):                     # Line 6
+        return len(self._data)             # Line 7
 
 
-# Code Module 4 – Membership Example
-
-if 20 in numbers:  # Module 4 Line 1
-    print("found")  # Module 4 Line 2
+    def __getitem__(self, index):          # Line 10
+        return self._data[index]           # Line 11
 
 
-# Code Module 5 – CustomList Implementation
-
-class CustomList:  # Module 5 Line 1
-    def __init__(self, data):  # Module 5 Line 2
-        self._data = list(data)  # Module 5 Line 3
-
-    def __len__(self):  # Module 5 Line 4
-        return len(self._data)  # Module 5 Line 5
-
-    def __getitem__(self, index):  # Module 5 Line 6
-        return self._data[index]  # Module 5 Line 7
+    def __contains__(self, item):          # Line 14
+        return item in self._data          # Line 15
 
 
-# Code Module 6 – Operator Example
+    def __iter__(self):                    # Line 18
+        return iter(self._data)            # Line 19
+```
 
-a = 5  # Module 6 Line 1
-b = 10  # Module 6 Line 2
-result = a + b  # Module 6 Line 3
+---
 
+## Module 2
 
-# Code Module 7 – Duck Typing Example
+```python
+def analyze(source):                                       # Line 1
+    lines = list(source)                                   # Line 2
+    return {                                               # Line 3
+        "line_count": len(lines),                          # Line 4
+        "word_count": sum(len(line.split()) for line in lines),  # Line 5
+        "first_line": lines[0] if lines else None          # Line 6
+    }
+```
 
-def total(values):  # Module 7 Line 1
-    result = 0  # Module 7 Line 2
-    for value in values:  # Module 7 Line 3
-        result += value  # Module 7 Line 4
-    return result  # Module 7 Line 5
+---
 
+## Module 3
 
-# Code Module 8 – Lazy Loader Example
-
-class LazyFileLoader:  # Module 8 Line 1
-    def __init__(self, filename):  # Module 8 Line 2
-        self.filename = filename  # Module 8 Line 3
-
-    def __getitem__(self, index):  # Module 8 Line 4
-        with open(self.filename) as f:
-            for i, line in enumerate(f):
-                if i == index:
-                    return line.strip()
-        raise IndexError  # Module 8 Line 9
-
-loader = LazyFileLoader("log.txt")  # Module 8 Line 10
-line = loader[5]  # Module 8 Line 11
+```python
+class LazyFileLoader:                       # Line 1
+    def __init__(self, filename):           # Line 2
+        self.filename = filename            # Line 3
 
 
-# Code Module 9 – Strategy Example
+    def __getitem__(self, index):           # Line 6
+        with open(self.filename) as f:      # Line 7
+            for i, line in enumerate(f):    # Line 8
+                if i == index:              # Line 9
+                    return line.strip()     # Line 10
+        raise IndexError                    # Line 11
+```
 
-class Discount10:  # Module 9 Line 1
-    def apply(self, price):  # Module 9 Line 2
-        return price * 0.9  # Module 9 Line 3
+---
 
-discount = Discount10()  # Module 9 Line 4
-final_price = discount.apply(100)  # Module 9 Line 5
+## Module 4
+
+```python
+class Discount10:               # Line 1
+    def apply(self, price):     # Line 2
+        return price * 0.9      # Line 3
+
+
+class Discount20:               # Line 6
+    def apply(self, price):     # Line 7
+        return price * 0.8      # Line 8
+```
