@@ -1,14 +1,16 @@
-Slide 1 Title: Behavior Over Inheritance
+Slide 1
+Title: From Syntax Mechanics to Structural Compatibility
 
-Point 1: Python prefers behavior over inheritance. Point 2: Python code
-feels flexible because of this design. Point 3: Python does not obsess
-over class hierarchies and enables natural system design.
+Point 1: The previous lesson explained how Python syntax maps to special methods.
+Point 2: This lesson shifts focus from syntax mechanics to structural compatibility.
+Point 3: The central question now is how Python decides whether an object qualifies to participate in a system.
 
-Slide 2 Title: Capability Determines Fit
+Slide 2
+Title: Capability Determines System Fit
 
-Point 1: Python decides whether something fits into a system. Point 2:
-Fit is determined by what an object can do, not what it is. Point 3:
-Python evaluates capability over background.
+Point 1: Python evaluates whether something fits into a system.
+Point 2: Compatibility is determined by what an object can do.
+Point 3: Qualification is based on behavior, not class hierarchy.
 
 Slide 3 Title: Informal Interfaces
 
