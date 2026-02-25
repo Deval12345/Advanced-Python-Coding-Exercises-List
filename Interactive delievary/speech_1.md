@@ -30,7 +30,7 @@ The special dunder method len returns the length of valueStore.
 
 Because the class defines the special dunder method len, calling len on an instance triggers that method and returns the computed length.
 
-len of x maps to x dot special dunder method len.
+len of any object maps to dunder method len call of that object
 
 Here we define a class named IndexContainer.
 
