@@ -44,7 +44,7 @@ Because the class defines the special dunder method len, calling len on an insta
 
 ### CONCEPT 1.2
 
-len of x maps to x dot special dunder method len.
+len of any object maps to dunder method len call of that object 
 
 ### EXAMPLE 1.2
 
