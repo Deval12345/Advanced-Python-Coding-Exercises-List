@@ -1,26 +1,22 @@
 Alright everyone, let us get started.
 
-Today we are going to talk about protocols, and more broadly, why Python
-prefers behavior over inheritance \[slide 1 point 1\].
+In the previous lesson, we explored how Python syntax maps to special methods behind the scenes [slide 1 point 1]. We saw how operators, iteration, and built in functions translate into method calls on objects.
 
-This topic quietly explains why Python code feels flexible, even when no
-one explicitly taught you the rules \[slide 1 point 2\]. By the end of
-this session, you will understand why Python does not obsess over class
-hierarchies, why things just work, and how you can design systems that
-feel natural instead of rigid \[slide 1 point 3\].
+Today, we move one level higher [slide 1 point 2].
 
-What we are really studying today is how Python decides whether
-something fits into a system \[slide 2 point 1\].
+Instead of asking how syntax works, we ask a different question. How does Python decide whether an object qualifies to participate in a system [slide 1 point 3].
 
-The answer is not by what it is, but by what it can do \[slide 2 point
-2\].
+This lesson is about structural compatibility.
 
-Think about hiring someone for a job. You do not care which university
-they belong to, you care whether they can actually perform the task.
+We will study why Python does not require formal declarations to determine whether something behaves like a sequence, a serializer, or a writable destination.
 
-Python thinks the same way \[slide 2 point 3\].
+By the end of this session, you will understand how Python evaluates capability at runtime [slide 2 point 1], and how modern type checkers can express those same expectations explicitly without changing runtime flexibility.
 
-This lesson is based on structured material about protocols.
+What we are really studying today is how Python decides whether something fits into a system [slide 2 point 1].
+
+The answer is not by what it is, but by what it can do [slide 2 point 2].
+
+Qualification is based on behavior, not class hierarchy [slide 2 point 3].
 
 Now let us begin with informal interfaces.
 
