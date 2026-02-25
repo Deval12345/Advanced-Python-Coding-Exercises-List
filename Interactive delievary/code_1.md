@@ -1,79 +1,174 @@
-Example 2.2
-Line 1: class A:
-Line 2:     def __len__(self): return 5
-Line 3: len(A())
+# Python Special Methods -- Combined Examples
 
-Example 2.3
-Line 1: class B:
-Line 2:     def __getitem__(self, i): return i * 10
-Line 3: B()[2]
+------------------------------------------------------------------------
 
-Example 2.4
-Line 1: class C:
-Line 2:     def __iter__(self): return iter([1, 2, 3])
-Line 3: list(C())
+## Example 2.2
 
-Example 2.5
-Line 1: class D:
-Line 2:     def __contains__(self, x): return x == 5
-Line 3: 5 in D()
+``` python
+class A:                      # Line 1
+    def __len__(self):        # Line 2
+        return 5
+len(A())                      # Line 3
+```
 
-Example 3.2
-Line 1: class E:
-Line 2:     def __init__(self): self._data = [1, 2, 3]
-Line 3: E()._data
+------------------------------------------------------------------------
 
-Example 3.3
-Line 1: class F:
-Line 2:     def __len__(self): return 4
-Line 3: len(F())
+## Example 2.3
 
-Example 3.4
-Line 1: class G:
-Line 2:     def __getitem__(self, i): return "A"
-Line 3: G()[2]
+``` python
+class B:                              # Line 1
+    def __getitem__(self, i):          # Line 2
+        return i * 10
+B()[2]                                  # Line 3
+```
 
-Example 3.5
-Line 1: class H:
-Line 2:     def __contains__(self, x): return True
-Line 3: "x" in H()
+------------------------------------------------------------------------
 
-Example 3.6
-Line 1: class I:
-Line 2:     def __iter__(self): return iter(["a", "b"])
-Line 3: list(I())
+## Example 2.4
 
-Example 3.7
-Line 1: def consume(x):
-Line 2:     return list(x)
-Line 3: consume((i for i in range(3)))
+``` python
+class C:                              # Line 1
+    def __iter__(self):                # Line 2
+        return iter([1, 2, 3])
+list(C())                              # Line 3
+```
 
-Example 4.1
-Line 1: class J:
-Line 2:     def __add__(self, other): return "added"
-Line 3: J() + J()
+------------------------------------------------------------------------
 
-Example 5.2
-Line 1: def collect(x):
-Line 2:     return list(x)
-Line 3: collect(["a", "b"])
+## Example 2.5
 
-Example 5.3
-Line 1: def count_words(lines):
-Line 2:     return sum(len(line.split()) for line in lines)
-Line 3: count_words(["hello world"])
+``` python
+class D:                              # Line 1
+    def __contains__(self, x):         # Line 2
+        return x == 5
+5 in D()                               # Line 3
+```
 
-Example 6.2
-Line 1: class K:
-Line 2:     def __getitem__(self, i): return i
-Line 3: K()[3]
+------------------------------------------------------------------------
 
-Example 6.3
-Line 1: class L:
-Line 2:     def __getitem__(self, i): raise IndexError
-Line 3: L()[1]
+## Example 3.2
 
-Example 7.2
-Line 1: class M:
-Line 2:     def apply(self, price): return price * 0.9
-Line 3: M().apply(100)
+``` python
+class E:                              # Line 1
+    def __init__(self):                # Line 2
+        self._data = [1, 2, 3]
+E()._data                               # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 3.3
+
+``` python
+class F:                              # Line 1
+    def __len__(self):                 # Line 2
+        return 4
+len(F())                               # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 3.4
+
+``` python
+class G:                              # Line 1
+    def __getitem__(self, i):          # Line 2
+        return "A"
+G()[2]                                  # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 3.5
+
+``` python
+class H:                              # Line 1
+    def __contains__(self, x):         # Line 2
+        return True
+"x" in H()                             # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 3.6
+
+``` python
+class I:                              # Line 1
+    def __iter__(self):                # Line 2
+        return iter(["a", "b"])
+list(I())                              # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 3.7
+
+``` python
+def consume(x):                       # Line 1
+    return list(x)
+consume((i for i in range(3)))        # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 4.1
+
+``` python
+class J:                              # Line 1
+    def __add__(self, other):          # Line 2
+        return "added"
+J() + J()                              # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 5.2
+
+``` python
+def collect(x):                       # Line 1
+    return list(x)
+collect(["a", "b"])                   # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 5.3
+
+``` python
+def count_words(lines):                       # Line 1
+    return sum(len(line.split()) for line in lines)
+count_words(["hello world"])                  # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 6.2
+
+``` python
+class K:                              # Line 1
+    def __getitem__(self, i):          # Line 2
+        return i
+K()[3]                                  # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 6.3
+
+``` python
+class L:                              # Line 1
+    def __getitem__(self, i):          # Line 2
+        raise IndexError
+L()[1]                                  # Line 3
+```
+
+------------------------------------------------------------------------
+
+## Example 7.2
+
+``` python
+class M:                              # Line 1
+    def apply(self, price):            # Line 2
+        return price * 0.9
+M().apply(100)                         # Line 3
+```
