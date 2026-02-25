@@ -1,69 +1,77 @@
 Slide 1
-Title: Python Data Model as Interface
+Title: Python Data Model
 
-Point 1: Python Data Model consists of dunder methods like "__len__" and "__getitem__"
-Point 2: Objects plug into Python syntax through these methods
-Point 3: Syntax can be mentally translated into method calls
+Point 1: Python is an object centric framework
+Point 2: Syntax maps to special methods
+Point 3: Behavior defines participation in language
+Point 4: Understanding method mapping removes magic
 
 Slide 2
-Title: Length via "__len__"
+Title: Syntax to Special Method Mapping
 
-Point 1: Calling "len(numbers)" invokes "__len__"
-Point 2: Example: numbers = [1, 2, 3]
-Point 3: Example: len(numbers)
+Point 1: Length uses special method "len"
+Point 2: Indexing uses special method "getitem"
+Point 3: Looping uses special method "iter"
+Point 4: Membership uses special method "contains"
+Point 5: Syntax is sugar over method calls
 
 Slide 3
-Title: Indexing via "__getitem__"
+Title: Designing Custom Containers
 
-Point 1: Indexing at position i invokes "__getitem__"
-Point 2: Example: numbers = [10, 20, 30]
-Point 3: Example: value = numbers[1]
+Point 1: Class "CustomList" defines new behavior
+Point 2: Initialization handled by special method "init"
+Point 3: Length behavior defined by special method "len"
+Point 4: Indexing behavior defined by special method "getitem"
+Point 5: Membership defined by special method "contains"
+Point 6: Iteration defined by special method "iter"
 
 Slide 4
-Title: Iteration and Membership
+Title: Operator Overloading
 
-Point 1: For loop invokes "__iter__"
-Point 2: Membership check invokes "__contains__"
-Point 3: Behavior enables natural syntax
+Point 1: Addition maps to special method "add"
+Point 2: Left operand controls addition behavior
+Point 3: Operators are method calls
+Point 4: Implementation defines result
+Point 5: Overloading must preserve clarity
 
 Slide 5
-Title: Custom Objects with Dunder Methods
-
-Point 1: Implement "__len__" and "__getitem__" to mimic list behavior
-Point 2: Example: custom = CustomList([5, 6, 7])
-Point 3: Example: len(custom), custom[1]
-
-Slide 6
-Title: Operators as Methods
-
-Point 1: Addition invokes "__add__"
-Point 2: Example: result = a + b
-Point 3: Operators are syntax over method calls
-
-Slide 7
 Title: Duck Typing
 
-Point 1: Functions rely on behavior, not explicit type
-Point 2: Iteration and addition are sufficient
-Point 3: Compatibility comes from capability
+Point 1: Type checks are unnecessary
+Point 2: Function "analyze" relies on behavior
+Point 3: Iterable behavior required via "iter"
 
-Slide 8
+Slide 6
+Title: Behavior Driven Design
+
+Point 1: Length behavior required via "len"
+Point 2: Iteration required for list conversion
+Point 3: String like elements required for processing
+
+Slide 7
 Title: Lazy Indexing
 
-Point 1: Implement "__getitem__" for on demand loading
-Point 2: Example: loader = LazyFileLoader("log.txt")
-Point 3: Example: line = loader[5]
+Point 1: Class "LazyFileLoader" defers loading
+Point 2: Indexing implemented via special method "getitem"
+Point 3: Raises "IndexError" for invalid positions
+
+Slide 8
+Title: Memory Efficient Design
+
+Point 1: Data loaded on demand
+Point 2: Constant memory usage
+Point 3: Preserves indexing contract
 
 Slide 9
-Title: Interchangeable Behavior
+Title: Strategy Pattern
 
-Point 1: Shared method like "apply" defines contract
-Point 2: Example: discount.apply(100)
-Point 3: Polymorphism through behavior
+Point 1: Class "Discount10" defines method "apply"
+Point 2: Class "Discount20" defines method "apply"
+Point 3: Behavior enables interchangeable strategies
 
 Slide 10
-Title: Why It Matters
+Title: Final Takeaways
 
-Point 1: Dunder methods power Python syntax
-Point 2: They connect objects to language features
-Point 3: Understanding them improves design clarity
+Point 1: Special methods form Python’s core interface
+Point 2: Objects integrate through defined behavior
+Point 3: Always map syntax to underlying method
