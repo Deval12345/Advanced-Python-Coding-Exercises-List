@@ -1,0 +1,47 @@
+Homework: Decorators
+
+Exercise 1 — Comprehensive Logging Decorator
+
+Write a decorator called logDetailed that records four pieces of information every time the decorated function is called: the function name, the arguments it received, the result it returned, and how long it took to run. Apply it to a function called computeProduct that multiplies all numbers in a list. Call computeProduct with at least two different argument lists and verify that all four pieces of information appear in the output for each call.
+
+Requirements:
+- Use functools.wraps so the decorated function keeps its original name
+- Use time.perf_counter for timing
+- Print all four pieces of information in a readable format
+- The decorator must work correctly on any function, not just computeProduct
+
+
+Exercise 2 — Type Validation Decorator
+
+Write a decorator called enforceTypes that checks whether every positional argument passed to the decorated function matches an expected type. The decorator should accept a list of expected types as its configuration parameter. If any argument does not match its expected type, raise a TypeError with a message that identifies which argument number failed and what types were expected and received. Apply it to a function called divideNumbers that divides two numbers.
+
+Requirements:
+- Use functools.wraps
+- The type check must happen before the decorated function is called
+- Test with a correct call (two floats or two ints) and an incorrect call (a string where a number is expected)
+- The decorator must be configurable: it should accept different type lists for different functions
+
+
+Exercise 3 — Cache Decorator (Memoization)
+
+Write a decorator called memoize that caches the return value of a function based on its arguments. If the same arguments are passed again, return the cached result without calling the function. Use a dictionary to store the cache, where each key is a tuple of the arguments. Apply it to a function called computeFibonacci that computes Fibonacci numbers recursively. Verify that the decorated version runs significantly faster than the undecorated version for large inputs.
+
+Requirements:
+- Use functools.wraps
+- The cache must be stored inside the decorator's closure, not as a global variable
+- Only works for hashable arguments (no lists or dicts as arguments)
+- Add a print statement inside computeFibonacci to confirm it is called only once per unique input
+- Measure and print the time for a decorated call versus an undecorated call
+
+
+Exercise 4 — Stacking Two Decorators and Tracing Execution Order
+
+Write two decorators: one called tagEntry that prints a message when the function is entered, and one called tagExit that prints a message when the function returns. Stack both decorators on a function called formatGreeting that takes a name and returns a greeting string. Run the function and write a comment in your code that describes the exact execution order: which decorator's wrapper runs first, when formatGreeting actually executes, and which decorator's wrapper finishes last.
+
+Requirements:
+- Use functools.wraps in both decorators
+- The entry and exit messages must include the function name
+- Apply tagEntry as the outer decorator and tagExit as the inner decorator
+- Then swap their order and observe the difference in output
+- Your code comments must explain why the order changes when you swap the decorators
+

@@ -1,0 +1,55 @@
+Homework: Functions as Objects
+
+Exercise 1: Replace an if/elif Chain with a Function Dictionary
+
+You are given the following function that calculates shipping cost based on a shipping method:
+
+    def calculateShipping(orderTotal, shippingMethod):
+        if shippingMethod == "standard":
+            return orderTotal + 5
+        elif shippingMethod == "express":
+            return orderTotal + 15
+        elif shippingMethod == "overnight":
+            return orderTotal + 30
+        elif shippingMethod == "free":
+            return orderTotal
+        else:
+            raise ValueError("Unknown shipping method")
+
+Rewrite this using a function dictionary called shippingRules. Each key should map to a function that computes the cost. The calculateShipping function should look up the appropriate rule and call it. Your solution should produce the same results as the original for all four shipping methods. Add a fifth method called "subscription" that applies a 10 percent discount to the order total instead of adding a fee, without modifying the calculateShipping function at all — only by adding a new entry to shippingRules.
+
+Exercise 2: Build a Data Transformation Pipeline for Transaction Processing
+
+You work on a financial data team. Raw transaction records arrive as dictionaries with three fields: transactionId, amount, and currency. You need to build a cleaning and normalization pipeline with the following steps, in order:
+
+    Step 1 — rejectNegativeAmount: raise a ValueError if the amount is less than zero.
+    Step 2 — roundAmount: round the amount to two decimal places.
+    Step 3 — normalizeCurrency: convert the currency field to uppercase.
+    Step 4 — flagHighValue: add a new field called isHighValue that is True if amount exceeds 500, and False otherwise.
+
+Define each step as a separate function. Store all four functions in a list called transactionPipeline. Write a function called applyTransactionPipeline that accepts a single transaction dictionary and the pipeline list, and applies each step in sequence. Test your pipeline on at least three transaction records, including one with a negative amount to confirm the error is raised correctly.
+
+Exercise 3: Create a Factory That Generates Different Report Formatters
+
+You are building a reporting system. Reports can be formatted in three styles: plain text, CSV, and summary. Each formatter receives a list of transaction dictionaries (each with transactionId and amount fields) and returns a formatted string.
+
+Write a factory function called makeReportFormatter that accepts a parameter called formatStyle. Depending on the value of formatStyle, it should return one of three formatter functions:
+
+    "plain" — returns a multi-line string where each line reads "Transaction [id]: [amount]"
+    "csv" — returns a string with a header row "id,amount" followed by one row per transaction
+    "summary" — returns a single string showing total transaction count and total amount
+
+Call makeReportFormatter three times to produce plainFormatter, csvFormatter, and summaryFormatter. Apply each to the same list of five transactions and print the output. The factory function itself should contain no formatting logic — each returned function should be fully self-contained.
+
+Exercise 4: Write a Function That Accepts Another Function and Applies It with Error Handling
+
+Write a function called safeApply that accepts three parameters: inputData (a list), transformFunction (any callable), and fallbackValue (a default value to use if the function raises an exception).
+
+safeApply should iterate over inputData and call transformFunction on each item. If the call succeeds, append the result to the output list. If the call raises any exception, append fallbackValue instead and continue processing the remaining items. Return the complete output list.
+
+Test safeApply with the following scenarios:
+    Scenario A: pass a list of numeric strings mixed with non-numeric strings, and use int as the transformFunction with a fallbackValue of zero.
+    Scenario B: pass a list of transaction amounts including some negative values, and use a highValueValidator created with makeValidator (from the lecture examples) wrapped in a function that raises a ValueError for negative inputs, with a fallbackValue of False.
+    Scenario C: pass a list of raw text strings and use a pipeline applier that runs all three cleaning steps from the lecture examples, with a fallbackValue of the original string unchanged.
+
+Your safeApply function should never raise an exception regardless of what transformFunction does or what inputData contains.

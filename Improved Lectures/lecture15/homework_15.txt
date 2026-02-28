@@ -1,0 +1,164 @@
+Lecture 15 Homework — Attribute Access Control: __getattr__ and __getattribute__
+
+---
+
+Exercise 1 — DotDict: Nested Dictionary with Dot Access
+
+Task:
+Implement a DotDict class that wraps a dictionary and allows recursive dot-notation access to nested dictionaries. Accessing a key that holds another dictionary should return a new DotDict, not a plain dict. Accessing a missing key should raise AttributeError. Existing attributes and methods on the class should continue to work normally.
+
+Requirements:
+- Implement __getattr__ to forward attribute access to the internal dictionary
+- If the value for a key is itself a dict, return it wrapped in a new DotDict
+- Raise AttributeError for keys that do not exist in the dictionary
+- Do not break access to real instance attributes (like _data)
+- __repr__ should display the underlying dictionary
+
+Example Usage:
+data = {
+    "database": {
+        "host": "localhost",
+        "port": 5432,
+        "credentials": {
+            "user": "admin",
+            "password": "secret"
+        }
+    },
+    "debug": True
+}
+
+config = DotDict(data)
+print(config.debug)                          # True
+print(config.database.host)                  # localhost
+print(config.database.credentials.user)      # admin
+print(config.database.port)                  # 5432
+
+try:
+    _ = config.missing
+except AttributeError as e:
+    print(e)                                 # DotDict has no key: 'missing'
+
+---
+
+Exercise 2 — PermissionProxy: Role-Based Attribute Access Control
+
+Task:
+Implement a PermissionProxy that wraps any object and enforces field-level read permissions based on a user role. The proxy accepts a target object, the current user's role (a string), and a dictionary mapping attribute names to the minimum role required to read them. When an attribute is accessed through the proxy, check whether the user's role has permission. If not, raise PermissionError with a clear message.
+
+Requirements:
+- Implement __getattribute__ to intercept all attribute access
+- Define a role hierarchy: "guest" < "user" < "admin"
+- If the user's role is insufficient for the requested attribute, raise PermissionError
+- Attributes not listed in the permissions dictionary are accessible to all roles
+- Writes through the proxy should always raise AttributeError (proxy is read-only)
+- Use object.__setattr__ and object.__getattribute__ correctly to avoid recursion
+
+Example Usage:
+class PatientRecord:
+    def __init__(self):
+        self.name = "Jane Doe"
+        self.diagnosis = "Type 2 Diabetes"
+        self.ssn = "123-45-6789"
+
+record = PatientRecord()
+
+permissions = {
+    "diagnosis": "user",   # requires at least "user" role
+    "ssn": "admin"         # requires "admin" role
+}
+
+guest_proxy = PermissionProxy(record, role="guest", permissions=permissions)
+user_proxy = PermissionProxy(record, role="user", permissions=permissions)
+admin_proxy = PermissionProxy(record, role="admin", permissions=permissions)
+
+print(guest_proxy.name)        # Jane Doe (no restriction)
+print(user_proxy.diagnosis)    # Type 2 Diabetes
+print(admin_proxy.ssn)         # 123-45-6789
+
+try:
+    print(guest_proxy.diagnosis)
+except PermissionError as e:
+    print(e)   # Access denied: 'diagnosis' requires role 'user', current role is 'guest'
+
+---
+
+Exercise 3 — LazyLoader: Deferred Attribute Initialization
+
+Task:
+Implement a LazyLoader class where expensive attributes are only computed the first time they are accessed, then cached. The class should accept a dictionary of attribute names mapped to callables (factory functions). On first access of an attribute, call the factory and store the result. On subsequent accesses, return the cached result. Regular attributes set normally should work as usual.
+
+Requirements:
+- Implement __getattr__ to handle lazy attribute computation
+- Once computed, store the result in __dict__ so that __getattr__ is not called again
+- The factory callable takes no arguments and returns the value
+- Accessing an attribute with no factory and no value should raise AttributeError
+- Demonstrate with at least two lazy attributes and show that factories are called only once
+
+Example Usage:
+import time
+
+def expensiveComputation():
+    time.sleep(0.1)  # simulate slow operation
+    return [x ** 2 for x in range(1000)]
+
+def loadConfig():
+    time.sleep(0.1)  # simulate slow config load
+    return {"timeout": 30, "retries": 3}
+
+loader = LazyLoader({
+    "computedData": expensiveComputation,
+    "appConfig": loadConfig
+})
+
+loader.version = "1.0"   # regular attribute, set normally
+
+print(loader.version)        # 1.0 (from __dict__, no factory)
+
+start = time.time()
+result1 = loader.computedData   # factory called here
+print(f"First access: {time.time() - start:.2f}s")
+
+start = time.time()
+result2 = loader.computedData   # cached — no factory call
+print(f"Second access: {time.time() - start:.4f}s")
+
+print(result1 is result2)    # True — same object returned
+
+---
+
+Exercise 4 — AttributeAuditMixin: Audit Trail via __setattr__
+
+Task:
+Implement an AttributeAuditMixin that, when mixed into any class, records every attribute change: which attribute was changed, what the old value was, what the new value was, and a timestamp. The mixin should not interfere with __init__ (attributes set during __init__ should be recorded as changes from a sentinel "UNSET" value). Provide a method get_audit_trail() that returns the complete list of recorded changes.
+
+Requirements:
+- Override __setattr__ to intercept all attribute writes
+- Record: attribute name, old value (or "UNSET" if the attribute did not exist), new value, timestamp
+- Use object.__setattr__ to actually perform the write after recording
+- Do not record changes to the internal audit trail list itself
+- get_audit_trail() returns a list of dicts or formatted strings showing the change history
+- Demonstrate by creating a class that uses the mixin and modifying attributes multiple times
+
+Example Usage:
+import time
+
+class UserAccount(AttributeAuditMixin):
+    def __init__(self, username, email):
+        self.username = username
+        self.email = email
+        self.isActive = True
+
+account = UserAccount("alice", "alice@example.com")
+account.email = "alice@newdomain.com"
+account.isActive = False
+
+trail = account.get_audit_trail()
+for entry in trail:
+    print(entry)
+
+# Expected output (timestamps will vary):
+# {'attr': 'username', 'old': 'UNSET', 'new': 'alice', 'time': 1709298765.1}
+# {'attr': 'email', 'old': 'UNSET', 'new': 'alice@example.com', 'time': 1709298765.1}
+# {'attr': 'isActive', 'old': 'UNSET', 'new': True, 'time': 1709298765.1}
+# {'attr': 'email', 'old': 'alice@example.com', 'new': 'alice@newdomain.com', 'time': 1709298765.2}
+# {'attr': 'isActive', 'old': True, 'new': False, 'time': 1709298765.2}

@@ -1,0 +1,108 @@
+Homework: Iterators and Iterables
+
+Exercise 1: Build a NumberRange Custom Iterable
+
+Build a class named NumberRange that behaves like Python's built-in range() — but you will implement it yourself from scratch using the iteration protocol.
+
+The class should accept three arguments in __init__: a start value, a stop value, and a step value. Store all three as instance variables. Do not create a list of numbers — store only the parameters.
+
+Implement __iter__ so that it returns a fresh, independent iterator object every single time it is called. This means your __iter__ must never return self. You will need to create a separate iterator class to support this.
+
+Name the iterator class NumberRangeIterator. Inside its __init__, accept the start, stop, and step values and store the current position as an instance variable named currentValue. Implement __iter__ to return self. Implement __next__ to return the current value if it is less than stop, then advance currentValue by step; raise StopIteration if currentValue reaches or exceeds stop.
+
+Verify your implementation by doing all of the following:
+- Iterate over the same NumberRange object twice in two separate for loops and confirm both loops produce the complete sequence.
+- Create two iterators from the same NumberRange simultaneously using iter() and advance them independently using next() to confirm they do not share state.
+- Confirm that list(yourNumberRange) produces the correct output multiple times in a row.
+
+The goal of this exercise is to understand the architectural separation between the iterable (NumberRange) and the iterator (NumberRangeIterator), and to build that separation from scratch.
+
+---
+
+Exercise 2: Create a FileLineIterator
+
+Build a class named FileLineIterator that wraps a list of text lines — simulating reading a file without actually using file I/O.
+
+In __init__, accept a list of strings representing lines of text. Store this list in a variable named lineData.
+
+Implement __iter__ to return a fresh iterator over lineData each time it is called. Do not return self.
+
+Implement __len__ to return the number of lines.
+
+Implement __getitem__ to allow index-based access to individual lines.
+
+Now add a method named search that accepts a keyword string and returns a list of all lines that contain that keyword. Inside search, use a for loop over self — which will call your __iter__ — to find matches.
+
+Call search on the same FileLineIterator object twice with different keywords and confirm both calls return correct results. This confirms that your __iter__ produces fresh iterators each time and that search does not exhaust the object.
+
+Finally, demonstrate that a nested loop — iterating over the FileLineIterator inside another loop that also iterates over the same FileLineIterator — completes without corruption or missing lines.
+
+---
+
+Exercise 3: Find and Fix the Silent Iterator Exhaustion Bug
+
+You are given the following code. Read it carefully, identify the bug, explain it in a comment, and then write a corrected version.
+
+--- Buggy Code ---
+
+class SensorReadingBatch:
+    def __init__(self, readings):
+        self.readings = readings
+        self.currentIterator = iter(self.readings)
+
+    def __iter__(self):
+        return self
+
+    def average(self):
+        total = 0
+        count = 0
+        for value in self:
+            total += value
+            count += 1
+        return total / count if count > 0 else 0
+
+    def above_threshold(self, threshold):
+        result = []
+        for value in self:
+            if value > threshold:
+                result.append(value)
+        return result
+
+
+readings = SensorReadingBatch([10, 45, 30, 80, 15, 60])
+avg = readings.average()
+print("Average:", avg)
+
+highReadings = readings.above_threshold(40)
+print("High readings:", highReadings)
+
+--- End of Buggy Code ---
+
+Your tasks:
+1. Run the buggy code mentally and write down what the output will actually be versus what it should be.
+2. Identify the exact lines responsible for the bug.
+3. Write a corrected SensorReadingBatch class that produces correct output for both average() and above_threshold() — even when called in any order, any number of times.
+4. Add a third call after fixing it: readings.above_threshold(20) — confirm it returns the correct subset.
+5. Write a one-paragraph comment above your fixed class explaining the root cause of the bug and why your fix resolves it.
+
+---
+
+Exercise 4: Implement a PaginatedResults Iterable That Simulates API Page Fetching
+
+Build a class named PaginatedResults that simulates a paginated API response. The class holds a complete list of results internally but exposes them in pages.
+
+In __init__, accept a list of all results and an integer named pageSize. Store both. Compute and store the total number of pages.
+
+Implement __iter__ so that it yields results page by page. Each call to __iter__ must return a fresh iterator. Each step of the iteration should return one page's worth of results as a list — not individual items, but a list of items for that page.
+
+For example, if the full results are the numbers 1 through 10 and pageSize is 3, iterating over PaginatedResults should yield: [1, 2, 3], then [4, 5, 6], then [7, 8, 9], then [10].
+
+Implement __len__ to return the total number of pages.
+
+Demonstrate the following:
+- Iterate over the PaginatedResults in a for loop, printing each page.
+- Call list() on it twice in a row and confirm both produce the same complete list of pages.
+- Create two simultaneous iterators and advance them independently with next() to confirm independent state.
+- Handle the edge case where the final page is smaller than pageSize — confirm it returns only the remaining items.
+
+The goal of this exercise is to build a practical, production-style iterable where each iteration step returns a meaningful chunk of data, and where the fresh-iterator guarantee enables multiple consumers to independently page through the same result set.
