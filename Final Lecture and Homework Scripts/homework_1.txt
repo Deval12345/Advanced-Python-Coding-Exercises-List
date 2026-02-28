@@ -1,6 +1,0 @@
-Homework: Python Data Model
-
-1. Create a custom container class that supports len(), indexing, iteration, and membership testing.
-2. Extend the CustomList class to support slicing.
-3. Write a function that works on any iterable and test it with lists, generators, and files.
-4. Implement two strategy objects and switch them dynamically in client code.
