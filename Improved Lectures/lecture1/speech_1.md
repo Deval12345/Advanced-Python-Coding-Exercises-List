@@ -16,9 +16,13 @@ Think about this. Every time you call len on something in Python, or loop throug
 
 This is the foundation of the Python Data Model. Python was designed as a framework, and the objects you create are the plugins. And this is a deliberate architectural choice. Instead of giving you a fixed set of data types and saying, Here, use only these, it gives you a protocol. Implement specific special methods, and your objects become first-class citizens of the language.
 
-Now why does this matter in industry? Imagine you are building a data pipeline at a fintech company. You need custom data structures that behave exactly like Python lists or dictionaries, but underneath they connect to a database or stream data from an API. Because of the data model, you can build these objects and every Python library, every framework, every tool already knows how to work with them. No special adapters. No translation layers. Your custom object just works with for loops, with len, with the in operator, with everything.
+Now why does this matter in industry?
 
-This is not a theoretical exercise. Django QuerySets work this way. Pandas DataFrames work this way. PyTorch tensors work this way. The biggest, most battle tested Python projects in the world are built on exactly this principle.
+Imagine you are building a data pipeline at a fintech company. You need custom data structures that behave exactly like Python lists or dictionaries, but underneath they connect to a database or stream data from an API.
+
+Because of the Data Model, you can build these objects, and every Python library, every framework, every tool built by you or any other team already knows how to work with them. If it works with Python’s built-in lists and dictionaries, it will work with your custom objects. No special adapters. No translation layers.
+
+This is not a theoretical exercise. jango QuerySets work this way. Pandas DataFrames work this way. PyTorch tensors work this way. The biggest, most battle tested Python projects in the world are built on exactly this principle.
 
 Now let me show you a concrete example that makes this real. Imagine you are building an inventory management system. You have a collection of products, and you want this collection to behave like a native Python sequence.
 
