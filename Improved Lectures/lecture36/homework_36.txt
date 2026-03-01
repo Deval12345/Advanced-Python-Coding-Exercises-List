@@ -1,0 +1,51 @@
+Lecture 36 Homework — Process Pool for CPU-Bound Pipeline Stages
+
+Exercise 1: Full Async + Process Pool Pipeline
+
+Build a complete pipeline that reads from async sources, bridges to a process pool for CPU-bound computation, and writes results to a sink — all integrated.
+
+Requirements:
+1. Implement a full AsyncIngestionLayer class with: a list of AsyncSensorSource instances, an asyncio.Queue with maxsize=50, and a run(durationSec) async method that uses asyncio.gather to ingest all sources concurrently until durationSec elapses (use asyncio.wait_for). The ingestion layer must handle each source independently — if one source raises, continue the others.
+2. Implement a BatchAssembler class with an assemble(queue, batchSize, maxWaitSec) async method that reads records from the queue, accumulates them into batches of exactly batchSize (or flushes a smaller batch if maxWaitSec elapses with no new records — use asyncio.wait_for on the queue.get() call).
+3. Implement a ProcessPoolComputeLayer with a submit_batch(pool, batch) async method that calls loop.run_in_executor(pool, computeBatch, batch) and returns results. computeBatch must be a module-level function that: normalizes values, computes a 5-point rolling mean (over just the batch), and flags records with normalized value > 0.8 as anomalies.
+4. Implement a ResultsSink class with a receive_batch(results) method that appends results to an internal list and every 100 records prints a summary: total received, anomaly count, mean normalized value.
+5. Write a main that wires all four components together: ingestion (5 sensors, 0.05s interval) -> batch assembler (batchSize=15) -> process pool (4 workers) -> results sink. Run for 5 seconds and print a final report.
+
+---
+
+Exercise 2: Adaptive Batch Sizing
+
+Build a system that dynamically adjusts batch size based on measured worker throughput to maximize pipeline efficiency.
+
+Requirements:
+1. Implement a ThroughputMonitor class with a record_batch(batchSize, durationMs) method and a recommended_batch_size() method. Internally maintain a deque of the last 10 (batchSize, durationMs) tuples. recommended_batch_size calculates the optimal size by finding the batch size in the history where durationMs/batchSize (ms per record, IPC included) is minimized.
+2. Implement an AdaptiveBatchProcessor that starts with an initial batch size of 10 and after every 5 batches, queries ThroughputMonitor.recommended_batch_size() and updates its batch size. The batch size must be clamped between 5 and 200.
+3. Implement two different computeBatch functions with dramatically different per-record costs: computeLightBatch (one arithmetic operation per record — fast) and computeHeavyBatch (100 trigonometric operations per record — slow). The AdaptiveBatchProcessor should use a computeFn argument to switch between them.
+4. Run a benchmark that processes 5,000 records through AdaptiveBatchProcessor with computeLightBatch (optimal batch size should converge to larger value) and then 5,000 records with computeHeavyBatch (optimal should converge to smaller value due to different IPC/compute ratio). Track batch size history over time.
+5. Plot (using print with ASCII bars or a printed table) how batch size evolves over time for each compute function. Print the final recommended batch sizes and total throughput (records/second) for each scenario.
+
+---
+
+Exercise 3: Worker Pool with Priority Queuing
+
+Build a process pool system that handles two record priority levels — CRITICAL and NORMAL — where CRITICAL records are always processed before NORMAL records.
+
+Requirements:
+1. Implement a PriorityBatchQueue using two asyncio.Queues (criticalQueue and normalQueue). Implement async put(record, priority) that routes to the appropriate queue. Implement async get_batch(batchSize) that always drains criticalQueue first (up to batchSize records), then fills remaining space from normalQueue. Both queues have maxsize=100.
+2. Define CRITICAL records as those with value > 85.0 (potential overheat) or value < 15.0 (sensor failure). All other records are NORMAL. Implement a classify(record) function that returns "CRITICAL" or "NORMAL".
+3. Implement a PriorityPoolProcessor that reads batches from PriorityBatchQueue, submits them to a ProcessPoolExecutor, and tracks separately: criticalProcessed, normalProcessed, and criticalLatencyMs (time from record creation to result return for CRITICAL records — add a "createdAt" timestamp to each record).
+4. Implement a computePriorityBatch(records) module-level function that for CRITICAL records also computes an "urgencyScore" (how far the value is from the safe range [15, 85], as a percentage), and for NORMAL records just normalizes the value.
+5. Write a main that generates records from a source that produces 80% NORMAL and 20% CRITICAL records, runs for 3 seconds, and prints: total processed, CRITICAL count, NORMAL count, mean CRITICAL latency, and any records with urgencyScore > 50%.
+
+---
+
+Exercise 4: Process Pool Error Handling and Recovery
+
+Build a fault-tolerant process pool pipeline that handles worker crashes, partial batch failures, and poison-pill records gracefully.
+
+Requirements:
+1. Implement a FaultTolerantBatchProcessor whose computeFn (the module-level function submitted to workers) wraps each record processing in try/except. On success, include the result. On failure (ValueError, ArithmeticError), include an error record: {"error": str(e), "originalRecord": record, "status": "FAILED"}. The function never raises — it always returns a list, some entries may be error records.
+2. Implement a poison-pill record generator: 5% of records have value=float("nan") or value=float("inf"), which cause math operations to produce garbage or raise. The computeFn must detect these (using math.isfinite) and mark them as "POISON_PILL" status.
+3. Implement a worker crash simulator: with 2% probability, computeFn raises RuntimeError("worker crash"). Handle this at the ProcessPoolExecutor level — when a future raises RuntimeError, log the crash, re-submit the batch to a fresh pool (use a secondary ProcessPoolExecutor with 1 worker as a "recovery pool"), and if the recovery also fails, send all records in that batch to a dead-letter list.
+4. Implement a DeadLetterLog class that stores failed records with: the record itself, the exception type, the exception message, the attempt count, and the timestamp of failure. Implement a replay(computeFn) method that retries all dead-letter records once more.
+5. Write a main that processes 2,000 records with 5% poison pills and 2% crash probability. After the main run, call deadLetterLog.replay(computeFn) and print a full report: total records, successful, failed (error records), poison pills, worker crashes, dead-letter entries, dead-letter replay successes.

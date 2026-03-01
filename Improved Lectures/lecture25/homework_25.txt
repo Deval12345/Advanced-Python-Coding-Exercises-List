@@ -1,0 +1,83 @@
+Homework — Lecture 25: Multiprocessing — True Parallelism Beyond the GIL
+
+===============================================================
+EXERCISE 1 — Sequential vs. ThreadPool vs. ProcessPool CPU Benchmark
+===============================================================
+
+Measure the three-way performance comparison for CPU-bound work and observe the GIL effect directly.
+
+Requirements:
+
+1. Write a function called `matrixDotProduct` that accepts a `size` integer. It should create two square matrices of the given size using nested lists filled with random floats from `random.random()`. Then compute the dot product of the two matrices — the naive O(n³) triple-nested-loop algorithm (no NumPy). Return the sum of all elements in the result matrix. This is genuinely CPU-bound work.
+
+2. Write a function called `runSequential` that accepts a list of `size` values. For each size, call `matrixDotProduct(size)` and collect results. Return elapsed time and results.
+
+3. Write a function called `runWithThreads` that accepts the same list and a `maxWorkers` integer. Use `concurrent.futures.ThreadPoolExecutor` to compute all matrix products concurrently. Return elapsed time and results.
+
+4. Write a function called `runWithProcesses` that accepts the same list and a `maxWorkers` integer. Use `concurrent.futures.ProcessPoolExecutor` to compute all matrix products concurrently. Return elapsed time and results. Wrap in `if __name__ == "__main__"`.
+
+5. In the main block, run all three functions with a workload of 6 matrices each of size 80 (80×80 matrix dot products — enough CPU work to see the GIL effect). Print elapsed times and speedup ratios. Expected: thread version roughly matches sequential (GIL prevents parallelism), process version shows near N× speedup where N is your core count. Verify that all three versions produce numerically identical results (floating-point comparison within a tolerance).
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Task Queue with multiprocessing.Queue
+===============================================================
+
+Build a multi-worker data processing system using raw Queue-based IPC.
+
+Requirements:
+
+1. Write a function called `dataTransformWorker` that accepts a `taskQueue` and a `resultQueue`. It loops on `taskQueue.get()`. Each task is a dictionary with "taskId" (int) and "data" (a list of floats). The worker computes: mean, standard deviation (manual calculation — sum of squared deviations divided by count, then square root), and the index of the maximum value. It puts a result dictionary with "taskId", "mean", "stddev", "maxIndex", and "workerId" (from `os.getpid()`) onto the result queue. On receiving `None`, it exits cleanly.
+
+2. In a main block, generate 20 tasks. Each task has a random list of 50,000 float values. Create a task queue and a result queue. Start 4 worker processes. Submit all 20 tasks to the task queue. Then submit 4 None sentinels (one per worker). Collect all 20 results from the result queue. Join all workers.
+
+3. Verify correctness: for 3 randomly sampled tasks, compare the worker's computed mean against Python's `statistics.mean()` on the same data. They must match within a floating-point tolerance of 1e-9.
+
+4. Measure IPC overhead: modify the experiment so that tasks carry different data sizes — 10,000 floats, 50,000 floats, and 200,000 floats. Time the total processing for each data size (using 20 tasks each) and print the results. Observe how total time grows with data size due to pickling overhead.
+
+5. Add a "minimal IPC" version: instead of sending the actual float list, store all data in a shared list (created with `multiprocessing.Manager().list()`) and send only the task index. Each worker reads its data slice from the shared structure. Measure whether this changes performance for large data sizes.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — multiprocessing.Pool with imap and Progress Tracking
+===============================================================
+
+Build a progress-tracked parallel processor using Pool.imap.
+
+Requirements:
+
+1. Write a function called `analyzeTextChunk` that accepts a tuple of (chunkId, text). It should count: total characters, total words (split on whitespace), unique words (using a set converted to length), and sentences (split on period, exclamation, or question mark using `re.split`). It should simulate processing time by calling `time.sleep(random.uniform(0.05, 0.2))`. Return a dictionary with "chunkId", "charCount", "wordCount", "uniqueWordCount", "sentenceCount".
+
+2. Write a function called `generateTextChunks` that returns a list of 16 tuples. Each tuple is (chunkId, text) where the text is a randomly generated paragraph — you can use `random.choices(string.ascii_lowercase + " ", k=random.randint(500, 1500))` to generate random text strings (they will not be real words, but the analysis still counts characters and whitespace-separated tokens).
+
+3. In a main block, create the 16 text chunks. Run two experiments:
+   - Using `pool.map`: blocks until all 16 are done, then print all results and total time.
+   - Using `pool.imap`: print each result as it arrives (not waiting for all to finish), track progress as "Chunk N/16 complete", and print total time.
+
+4. Both versions must use a `Pool(processes=4)` context manager. Verify that both produce identical results for the same input data.
+
+5. Add a progress bar: for the `imap` version, maintain a counter that increments as each result arrives. Print the percentage complete after each result. Demonstrate that imap allows real-time progress reporting while map cannot.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Shared Memory with multiprocessing.Value and Array
+===============================================================
+
+Build a parallel counter and array accumulator using shared memory primitives.
+
+Requirements:
+
+1. Write a function called `countPrimesShared` that accepts a range (start, end), a shared `multiprocessing.Value` counter (type 'i' for integer), and a shared `multiprocessing.Lock`. For every prime number found in the range using trial division, it should increment the shared counter by 1. Use the lock to protect the increment: `with lock: counter.value += 1`. Return the count found in this range for verification.
+
+2. In a main block, create a shared `multiprocessing.Value('i', 0)` and a `multiprocessing.Lock()`. Split the range 2 to 100,000 into 4 equal segments. Create 4 processes, each calling `countPrimesShared` with their segment, the shared counter, and the shared lock. Start all 4, join all 4.
+
+3. After joining, print the final value of `counter.value`. Verify it equals the correct count of primes below 100,000. You can compute the expected count sequentially for comparison: the correct answer is 9592.
+
+4. Repeat the experiment WITHOUT the lock: replace `with lock: counter.value += 1` with `counter.value += 1` directly. Run multiple times and observe whether the count is consistently correct or varies run-to-run. This demonstrates why locking is required for shared Value writes from multiple processes.
+
+5. Bonus: implement the same accumulation using `multiprocessing.Array('i', 100_000)` — one cell per number, 1 if prime, 0 if not. Each worker fills its own slice of the array. After all workers join, sum the array in the main process. This version requires no lock because each worker writes to a disjoint slice. Compare the performance of locked-Value vs. lock-free-Array approaches.
+
+No solutions provided.

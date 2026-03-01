@@ -1,0 +1,35 @@
+# Lecture 26: Multiprocessing Part 2 — IPC Cost, Shared Memory, and When Parallelism Fails
+## speech_26.md — Instructor Spoken Narrative
+
+---
+
+Last lecture we built the foundation: processes, queues, pools, and the golden rule — minimize what crosses process boundaries. Today we go deeper. We make the "why" concrete. And then I am going to show you three scenarios where multiprocessing makes your code measurably slower than sequential execution — because understanding failure modes is as important as understanding success modes.
+
+Let us start with a question. When you send a Python object from one process to another, what actually happens? Most developers have a vague sense that "it gets serialized" — and they move on. But let us be precise, because the details matter.
+
+When you put a Python object into a multiprocessing.Queue, this sequence occurs. First, pickle serializes the object into a bytes buffer inside the sending process. That is copy number one — the data now exists in two places in the sending process's memory: the original object and the bytes buffer. Second, those bytes are written through a kernel-managed pipe into the OS's pipe buffer. That is copy number two. Third, the receiving process reads those bytes from the pipe and pickle reconstructs the object in the receiving process's memory. That is copy number three.
+
+A 100-megabyte NumPy array crossing a process boundary has been copied three times, with a peak memory consumption of 300 megabytes during transit. At typical disk speeds, serializing 100 megabytes takes 0.5 to 2 seconds. That is 0.5 to 2 seconds of overhead for every single task dispatch, before any computation happens.
+
+Here is the concrete scenario that illustrates how this fails in production. A video analytics company builds a system to analyze 4K camera frames. Each frame is a NumPy array roughly 50 megabytes. The system should analyze 30 frames per second. A developer uses multiprocessing.Pool and sends full frames to workers. At 50 megabytes times 30 frames per second, the IPC channel must move 1.5 gigabytes of data per second — purely in serialization overhead. The system becomes memory-bound before it becomes CPU-bound. Adding more workers makes it worse because each additional worker consumes more memory in transit. Parallelism made the pipeline slower. The fix is to not send frames at all — send file paths, and let each worker read its own file from disk.
+
+Let us look at Example 26.1 which measures this directly. We create four experimental scenarios: heavy computation with small data, light computation with small data, heavy computation with large data, and light computation with large data. We time each scenario sequentially and with a Pool of four workers. The pattern you will see is unambiguous: heavy compute with small data sees a real speedup, light compute with large data is slower in the pool than sequentially.
+
+Now the second major topic: concurrent.futures.ProcessPoolExecutor as the alternative to multiprocessing.Pool. You already know ThreadPoolExecutor from the lecture on Futures and Executors — same executor dot submit, same future objects, same as completed. ProcessPoolExecutor is exactly the same interface, backed by processes instead of threads. One line change: replace ThreadPoolExecutor with ProcessPoolExecutor. The rest of your code stays identical.
+
+Why does this matter? Because ProcessPoolExecutor produces genuine concurrent.futures.Future objects. These compose naturally with the rest of the futures ecosystem. They support add done callback. They work with asyncio.wrap future for integration into async programs. They support as completed for processing results in the order they finish. multiprocessing.Pool's AsyncResult objects do not do any of this.
+
+In Example 26.2, we submit eight tasks to a ProcessPoolExecutor and iterate with as completed. One task is deliberately given an invalid parameter that causes a ValueError. Watch how as completed surfaces that exception through future.result and how a normal try-except block handles it. This is the same exception propagation pattern you already know from threading. Parallelism model changes; error handling does not.
+
+Now I want to talk about the three failure scenarios for multiprocessing, because this is where many developers lose time in production.
+
+Scenario one: tasks that are too short. Process startup costs 50 to 200 milliseconds. With a warm pool, that cost is amortized. But IPC — the round-trip to submit a task and receive its result — still costs 2 to 20 milliseconds per task depending on payload size. If your computation takes 1 millisecond and IPC takes 5 milliseconds, you are paying 5× overhead for every task. Eight tasks at 1 millisecond each takes 8 milliseconds sequentially. With a pool and 5 milliseconds of IPC overhead each: 40 milliseconds of IPC plus 2 milliseconds of computation, for a total of 42 milliseconds. Sequential wins by 5×. The pool made it worse.
+
+Scenario two: large data payload. A task that processes a 100-megabyte array in 200 milliseconds of computation but takes 2 seconds to pickle sees 90% of its wall-clock time in serialization. Four workers each pickling independently: 4 × 2 seconds of pickling overhead, barely 0.2 seconds of computation per worker. Sequential execution takes 4 × 2.2 seconds equals 8.8 seconds. Pool execution takes 2.2 seconds for the dominant task — wait, that seems like a win. But the memory pressure is 4 × 300 megabytes equals 1.2 gigabytes of peak memory just for transit. If your machine only has 4 gigabytes of RAM and the rest is in use, the OS starts swapping. Now serial is faster again.
+
+Scenario three: tasks that require frequent inter-worker communication. Embarrassingly parallel tasks — tasks with no coordination — benefit most from processes. But tasks that need to share intermediate results, check shared state, or coordinate decisions through Manager objects pay synchronization costs that can dominate the computation benefit. Manager calls cross process boundaries every time. A design where workers check a shared flag ten times per second generates ten IPC round-trips per second per worker — with four workers, that is forty IPC calls per second purely for coordination.
+
+Example 26.3 makes the crossover point visible. We vary task duration from 1 millisecond to 500 milliseconds and measure sequential versus pool at each level. You will see sequential win at short durations and the pool win decisively at long ones. The crossover typically falls between 10 and 50 milliseconds on modern hardware, depending on data payload size.
+
+The takeaway: profile first. Always. Measure sequential versus parallel in isolation on representative data. If you cannot see a meaningful speedup in a controlled benchmark, the production system will not have one either. Architectural decisions should be data-driven, not assumption-driven. Multiprocessing is a powerful tool — but only when the problem fits its cost structure.
+

@@ -1,0 +1,81 @@
+Homework — Lecture 42: Big Project Stage 8 Part 2 — Advanced Internals: Metaclasses, Class Decorators, and Dynamic Generation
+
+===============================================================
+EXERCISE 1 — Extend the Self-Building Registry with Versioning
+===============================================================
+
+Build a production-grade stage registry that supports multiple versions of the same stage type.
+
+Requirements:
+
+1. Extend `PipelineStage.__init_subclass__` to accept a `version` keyword argument in addition to `stageType`. Store registrations as `(stageType, version)` tuples as keys in the registry. If version is not supplied, default to `"v1"`. The registration print should include the version: "[REGISTRY] Registered: 'threshold' v2 → ThresholdFilterV2".
+
+2. Write a `ThresholdFilterV2` class that inherits from `PipelineStage` with `stageType="threshold"` and `version="v2"`. Its `transform` should support an additional keyword argument `strictMode=False`. When `strictMode=True`, it filters records where `value < minVal OR value > maxVal`. When `strictMode=False`, it uses `<=` comparisons (inclusive bounds).
+
+3. Update `buildStageFromConfig` to accept an optional `"version"` key in the config dict. If present, look up `(stageType, version)` in the registry. If absent, try `(stageType, "v1")` first, then fall back to any registered version with a warning print. Raise `ValueError` if nothing matches.
+
+4. Write a function called `listRegisteredStages()` that prints a formatted table of all registered stages: columns for stageType, version, class name, and module name. Sort alphabetically by stageType then version.
+
+5. Test the versioned registry by building a pipeline from a config list that uses `"version": "v2"` for the threshold stage and default version for normalize and movingAverage. Run 20 records through the pipeline and verify the output. Verify that asking for `"version": "v3"` raises a `ValueError` with a helpful message listing available versions.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Class Decorator for Automatic Field Validation
+===============================================================
+
+Write a class decorator that injects field-level validation at attribute assignment time.
+
+Requirements:
+
+1. Write a class decorator called `validated_fields` that accepts a dictionary mapping field names to validator callables (functions that return True if a value is valid). For each field in the dict, it wraps the class's `__setattr__` to check the validator before allowing the assignment. If the validator returns False, raise a `ValueError` with a message: "Invalid value {value!r} for field '{name}'".
+
+2. Apply `validated_fields` to a class called `ValidatedSensorRecord` with fields: `sensorId` (must be a non-empty string), `value` (must be a float in range 0.0 to 500.0), and `unit` (must be one of "C", "F", "K", "kPa", "%RH"). Write the validator functions as module-level lambdas or short functions.
+
+3. Verify that valid records are created without error. Verify that assigning `value = -5.0` raises `ValueError`. Verify that assigning `unit = "mph"` raises `ValueError`. Verify that unvalidated fields (like a `timestamp` attribute not in the validators dict) pass through with no validation.
+
+4. Write a second decorator called `frozen_after_init` that prevents any attribute from being set after `__init__` completes. It should wrap `__setattr__` to check a `_initialized` flag. Set `_initialized = True` at the end of `__init__` (wrapping the original `__init__`). After `_initialized` is True, any `__setattr__` call raises `AttributeError`.
+
+5. Apply both `validated_fields` and `frozen_after_init` to a class called `ImmutableSensorRecord`. Verify that construction with valid values succeeds. Verify that any post-construction assignment raises `AttributeError`. Verify that construction with invalid values raises `ValueError` before the record is created.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Metaclass for Multi-Interface Enforcement
+===============================================================
+
+Write a metaclass that enforces multiple protocol interfaces simultaneously at class definition time.
+
+Requirements:
+
+1. Write a metaclass called `StrictStageMeta` that inherits from `type`. In `__new__`, it checks for the presence of all required methods: `transform`, `__repr__`, and a class variable called `STAGE_NAME` (a string). If any are missing from a non-base class (a class that has at least one base other than object), raise a `TypeError` with a specific message identifying which requirement is missing.
+
+2. Apply `StrictStageMeta` as the metaclass of a new base class called `StrictPipelineStage`. Write a compliant subclass called `SanitizeTransform` that implements all three requirements: `transform`, `__repr__`, and `STAGE_NAME = "sanitize"`. Its `transform` should replace any record where `value` is `None` or negative with a record where `value = 0.0`.
+
+3. Verify three failure cases: define a class missing `transform` and confirm `TypeError` at definition time. Define a class missing `__repr__` and confirm `TypeError`. Define a class missing `STAGE_NAME` and confirm `TypeError`. All three errors should occur before any instances are created.
+
+4. Write a mixin class called `StageBenchmarkMixin` that adds a method `benchmarkTransform(records)` to any stage. It wraps the stage's own `transform` method, measures elapsed time with `time.perf_counter`, and prints the result. Make `StageBenchmarkMixin` compatible with `StrictStageMeta` by ensuring it does not fail the metaclass checks (add all required attributes to the mixin itself).
+
+5. Create a class `BenchmarkedSanitizeTransform` that inherits from both `SanitizeTransform` and `StageBenchmarkMixin`. Verify that the metaclass enforcement still passes with multiple inheritance. Run `benchmarkTransform` on 10,000 synthetic records and print the timing.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Config-Driven Dynamic Class Generation
+===============================================================
+
+Use AutoSlotMeta to generate sensor record classes dynamically from configuration dictionaries.
+
+Requirements:
+
+1. Write a function called `makeRecordClass(className, fieldNames)` that dynamically creates a class using `AutoSlotMeta`. The function should build a namespace dictionary with `__annotations__` set to `{name: object for name in fieldNames}`, call `AutoSlotMeta(className, (), namespace)` directly to create the class, and return it. Verify the returned class has `__slots__` equal to the provided field names and that instances can be constructed with positional arguments.
+
+2. Generate three different record classes from config: `TemperatureRecord` with fields `["sensorId", "timestamp", "celsius", "fahrenheit", "unit"]`, `PressureRecord` with fields `["sensorId", "timestamp", "kpa", "normalized", "trend"]`, and `FlowRecord` with fields `["sensorId", "timestamp", "literPerMin", "rollingAvg", "derivative"]`. Verify each has no `__dict__` on instances.
+
+3. Write a factory function called `makeRecordFromDict(recordClass, data)` that constructs an instance of the given class from a dictionary by passing field values in slot order. If the dictionary is missing a required field, raise a `KeyError` with a clear message. If the dictionary has extra keys, ignore them.
+
+4. Write a function called `compareRecordLayouts(classes)` that accepts a list of dynamically generated record classes and prints a comparison table: class name, number of fields, slot names, shell size in bytes (using `sys.getsizeof` on a sample instance), and whether `__dict__` is absent. Create one sample instance per class using default values.
+
+5. Run a performance benchmark: generate 500,000 instances of `TemperatureRecord` using a list comprehension and measure peak memory with `tracemalloc`. Compare this against a dict-based record with the same five fields and print a summary showing the memory savings from the slot-based approach.
+
+No solutions provided.

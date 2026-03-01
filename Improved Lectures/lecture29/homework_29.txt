@@ -1,0 +1,81 @@
+Homework — Lecture 29: Async + Multiprocessing Hybrid Architecture
+
+===============================================================
+EXERCISE 1 — Async Handler with ProcessPoolExecutor: Batch Request Processing
+===============================================================
+
+Build a simulated API server that handles batches of requests using the async front-end + process pool back-end pattern.
+
+Requirements:
+
+1. Write a synchronous function called `analyzeRequest(requestData)` where `requestData` is a dictionary with "requestId" (int) and "values" (list of floats). The function computes: the mean, the variance, the sum of square roots, and a "risk score" as `sum / (mean * len(values) + 1)`. Return a dictionary with all computed fields plus the requestId.
+
+2. Write an async coroutine called `handleRequest(requestId, values, executor)` that prints "Request N: dispatching" immediately, then uses `loop.run_in_executor` to call `analyzeRequest`, then prints "Request N: complete, risk=X" when the result arrives. Return the result dictionary.
+
+3. In a main coroutine, generate 10 requests: each has a requestId from 0-9 and a values list of 10,000 random floats. Create a ProcessPoolExecutor with max_workers=3. Use `asyncio.gather` to handle all 10 requests concurrently. Measure elapsed time.
+
+4. After gathering results, print a summary table: requestId, risk score (rounded to 4 decimal places), and whether the request was "high risk" (risk > 0.6) or "normal". Count and print the total number of high-risk requests.
+
+5. Add a comparison: run the same 10 requests sequentially (no async, no process pool) by calling `analyzeRequest` directly in a loop. Measure elapsed time. Print both times and the speedup. The async+process pool version should be approximately min(10/3, 1)× faster — bounded by the 3 workers but with full I/O concurrency for the async dispatcher.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Producer-Consumer with Backpressure
+===============================================================
+
+Build a streaming data pipeline with explicit backpressure control using asyncio.Queue and a ProcessPoolExecutor.
+
+Requirements:
+
+1. Write a synchronous function called `transformRecord(record)` where `record` is a dictionary with "recordId" and "data" (list of 1000 integers). The function computes `sum(math.sqrt(abs(x)) for x in data)`, applies a log transform: `result = math.log(total + 1)`, and returns `(record["recordId"], round(result, 6))`.
+
+2. Write an async producer coroutine called `produceRecords(queue, totalRecords)` that generates records one at a time. Each record has a unique recordId and a list of 1000 random integers between -500 and 500. After generating each record, await `queue.put(record)` and then await `asyncio.sleep(random.uniform(0.005, 0.02))` to simulate variable I/O latency. After all records are generated, put None (poison-pill) into the queue.
+
+3. Write an async consumer coroutine called `consumeRecords(queue, executor, results)` that reads from the queue in a loop, dispatches each record to the executor via `run_in_executor`, appends the resulting future to a list, and breaks on None. After the loop, use `asyncio.gather(*futures)` to collect all results and extend the `results` list.
+
+4. In a main coroutine: create an `asyncio.Queue(maxsize=5)`, a results list, and a `ProcessPoolExecutor(max_workers=4)`. Run producer and consumer concurrently with `asyncio.gather`. Process 20 records total. After completion, print all results sorted by recordId and compute the average result value.
+
+5. Demonstrate backpressure: add logging inside the producer. Before each `queue.put`, print f"Producer: queue size before put = {queue.qsize()}/{queue.maxsize}". Observe that the queue size oscillates near the maxsize, confirming that the producer is being throttled by the consumer. Run with maxsize=2 and maxsize=20 and compare behavior (queue sizes should differ significantly).
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Three-Tier Architecture: Async + Threads + Processes
+===============================================================
+
+Build a three-tier architecture combining an async event loop, a ThreadPoolExecutor for blocking I/O, and a ProcessPoolExecutor for CPU work.
+
+Requirements:
+
+1. Write a synchronous blocking I/O simulation function called `fetchDataFromLegacySystem(dataId)` that calls `time.sleep(random.uniform(0.05, 0.1))` (simulating a synchronous database call) and returns a list of 5000 random floats seeded with dataId.
+
+2. Write a synchronous CPU function called `runAnalysis(inputData)` that accepts a list of floats and computes: mean, standard deviation (using `statistics.stdev`), and a histogram (10 bins, values 0-1). Return a result dictionary.
+
+3. Write an async coroutine called `processDataItem(dataId, threadPool, processPool)` that: (a) uses `run_in_executor(threadPool, ...)` to call `fetchDataFromLegacySystem` — this runs in the thread pool to avoid blocking the event loop with the synchronous sleep; (b) then uses `run_in_executor(processPool, ...)` to call `runAnalysis` on the fetched data — this runs in the process pool for CPU parallelism. Return the result with the dataId.
+
+4. In a main coroutine: create `ThreadPoolExecutor(max_workers=8)` and `ProcessPoolExecutor(max_workers=4)`. Generate 12 data items (IDs 0-11). Use `asyncio.gather` to process all 12 concurrently. Measure elapsed time. Print results including mean and std for each item.
+
+5. Compare three configurations: (a) async + thread pool + process pool as described; (b) async + process pool only (run `fetchDataFromLegacySystem` in the process pool too); (c) sequential (no concurrency at all). Measure elapsed time for all three. The async + thread + process version should be fastest because the thread pool handles the blocking I/O concurrently while the process pool handles CPU in parallel. Print a comparison table.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Error Handling in the Hybrid Architecture
+===============================================================
+
+Build a robust hybrid async+multiprocessing system that handles worker errors, timeouts, and partial failures gracefully.
+
+Requirements:
+
+1. Write a synchronous worker function called `riskyComputation(taskId, shouldFail, timeoutMs)`. If `shouldFail` is True, raise `ValueError(f"Task {taskId} failed intentionally")`. Otherwise, simulate work: `time.sleep(timeoutMs / 1000)` followed by `sum(math.sqrt(i) for i in range(50000))`. Return `(taskId, round(result, 4))`.
+
+2. Write an async coroutine called `safeHandleTask(taskId, shouldFail, timeoutMs, executor)` that calls `loop.run_in_executor` with `riskyComputation`. Wrap the await in a try-except block: catch `ValueError` (worker failure) and `asyncio.TimeoutError` (if you use `asyncio.wait_for` to impose a deadline). On failure, return a failure result dictionary: `{"taskId": taskId, "status": "failed", "error": str(e)}`. On success, return a success dictionary.
+
+3. Use `asyncio.wait_for(run_in_executor_call, timeout=0.5)` to impose a 500ms deadline on each task. Submit 12 tasks: 4 with `shouldFail=True`, 4 with `timeoutMs=800` (will exceed the 500ms deadline), and 4 with `shouldFail=False` and `timeoutMs=100` (will succeed). Use `asyncio.gather` with `return_exceptions=False` is not appropriate here — use individual try-except in each coroutine so failures are isolated.
+
+4. After all 12 tasks complete (successes and failures), print a summary: number of successes, number of ValueError failures, number of timeout failures. Verify they sum to 12. Print the successful results.
+
+5. Demonstrate recovery: for each failed task, retry it with corrected parameters — set `shouldFail=False` and `timeoutMs=100`. Collect the retry results and verify all retries succeed. Print total elapsed time for the original run plus retries. This demonstrates that a robust hybrid system can detect failures, identify their type, and retry with adjusted parameters.
+
+No solutions provided.

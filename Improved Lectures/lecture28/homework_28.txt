@@ -1,0 +1,81 @@
+Homework — Lecture 28: Sharing NumPy Data with Multiprocessing — Zero-Copy Design
+
+===============================================================
+EXERCISE 1 — Zero-Copy Shared Array: Parallel Normalization
+===============================================================
+
+Build a parallel normalization pipeline using multiprocessing.Array and numpy.frombuffer.
+
+Requirements:
+
+1. Write a function called `normalizeChunk` that accepts `sharedArray`, `length`, `workerId`, `numWorkers`, `globalMin`, and `globalMax`. Inside the function, create a frombuffer view of the shared array. Compute the start and end indices for this worker's chunk (handle the last worker's remainder). Normalize the chunk in-place: `arr[start:end] = (arr[start:end] - globalMin) / (globalMax - globalMin)`.
+
+2. In a main block, create a multiprocessing.Array of `ctypes.c_double` with size 2,000,000. Fill it with random values using frombuffer and `np.random.rand`. Record the global min and max BEFORE spawning workers (compute from the frombuffer view in the main process).
+
+3. Spawn 4 worker processes, each receiving the shared array, the global min, and the global max. Start all workers and join them. After joining, verify the result using frombuffer in the main process: the minimum value should be 0.0 and the maximum should be 1.0. Print both as a verification.
+
+4. Measure the time for the parallel normalization. Then, for comparison, fill the array with new random data and measure the time for sequential normalization: `arr[:] = (arr - arr.min()) / (arr.max() - arr.min())`. Print both times and the speedup.
+
+5. Add a correctness check: after the parallel normalization, verify that the result is exactly equal to what sequential normalization would produce on the same data. To do this, save the original array data to a separate local NumPy array (before parallel normalization), run the parallel version, then compute the sequential result on the saved copy, and use `np.allclose` to compare the two results. Print whether they match.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — shared_memory Lifecycle and Multi-Process Analysis
+===============================================================
+
+Build a shared memory pipeline with correct lifecycle management for multiprocessing.shared_memory.
+
+Requirements:
+
+1. Write a function called `computeHistogram` that accepts `sharedName`, `shape`, `dtype`, `chunkStart`, `chunkEnd`, `numBins`, and `resultQueue`. The function attaches to the shared memory by name, creates a NumPy view, slices its chunk, computes a histogram using `np.histogram(chunk, bins=numBins, range=(0.0, 1.0))`, puts the histogram counts array (converted to a list for pickling) into the result queue, and closes its shared memory reference.
+
+2. In a main block, generate a 5,000,000-element float64 array of random values. Create a SharedMemory block of the correct size, copy the data in, and record the name. Use a try-finally block to ensure `sharedMem.close()` and `sharedMem.unlink()` are always called even if an exception occurs.
+
+3. Spawn 4 worker processes, each analyzing a different quarter of the array. After all workers join, retrieve all 4 histogram arrays from the result queue. Combine them by summing element-wise (the combined histogram represents the full dataset). Print the combined histogram counts.
+
+4. Verify correctness: compute `np.histogram` on the full original array sequentially and compare to the combined parallel histogram. Use `np.array_equal` to check they match. Print a confirmation message.
+
+5. Measure and compare: time the parallel histogram computation (4 workers) versus sequential `np.histogram` on the full array. Print both times. For 5,000,000 elements with 4 workers, the parallel version should be faster, but the speedup may be less than 4× due to worker startup and Queue overhead. Print the actual speedup.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Read-Only Shared Memory: Multiple Readers, Zero Copies
+===============================================================
+
+Demonstrate the read-only shared memory pattern where many workers read the same large array simultaneously without any copying.
+
+Requirements:
+
+1. Write a function called `correlateWithTemplate` that accepts `sharedName`, `shape`, `dtype`, `templateVector`, and `resultQueue`. The function attaches to shared memory, creates a NumPy view, and computes the Pearson correlation coefficient between `templateVector` and each row of the 2D array (the array has shape `(numRows, numCols)` where each row is an observation). Return the index and correlation coefficient of the row with the highest correlation. Put `(workerIdFromName, maxIndex, maxCorrelation)` into the result queue.
+
+2. In a main block, create a 2D float64 NumPy array of shape `(10000, 500)` — 10,000 observations of 500 features. Create a template vector of shape `(500,)`. Copy both into shared memory (create two separate SharedMemory blocks — one for the matrix, one for the template). All workers will read both without any locking.
+
+3. Spawn 4 workers, each responsible for searching a different set of 2,500 rows (rows 0-2499, 2500-4999, etc.). Each worker independently reads from the same shared memory — no locks, concurrent reads. After all workers join, collect results from the queue and identify the globally highest correlation across all workers.
+
+4. Verify with a sequential full scan: compute the Pearson correlation for every row sequentially and find the true maximum. Assert that the parallel result matches the sequential result. Print both the row index and correlation value.
+
+5. Measure and compare the time for the parallel search versus the sequential scan. For a 10,000 × 500 matrix, the parallel version with 4 workers should show a meaningful speedup. Also print the total data read by workers: `4 workers × 10000 × 500 × 8 bytes = ...` — this is the total number of bytes read from shared memory — to illustrate that zero-copy sharing enables multiple workers to read the same data with no memory overhead.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Comparing Queue vs. Shared Memory: Measured Overhead
+===============================================================
+
+Build a direct, measured comparison of the Queue-based and shared-memory-based approaches for passing NumPy arrays between processes.
+
+Requirements:
+
+1. Write two worker functions: `processArrayViaQueue(taskQueue, resultQueue)` and `processArrayViaSharedMemory(sharedName, shape, dtype, resultQueue)`. The Queue version receives a full NumPy array through `taskQueue.get()`, computes `array.mean()` and `array.std()`, and puts results into `resultQueue`. The shared memory version attaches by name, creates a view, computes the same statistics, and puts results into `resultQueue`.
+
+2. For the Queue version: create 4 worker processes. From the main process, put 4 NumPy arrays of 1,000,000 float64 elements each into the task queue. Measure the total elapsed time from when the first array is put into the queue to when all 4 results have been retrieved.
+
+3. For the shared memory version: create a single 4,000,000-element float64 shared memory block. Create 4 workers, each responsible for one million-element chunk (using chunk boundaries). Measure the total elapsed time from worker start to when all 4 results have been retrieved from the result queue.
+
+4. Print a comparison table: approach, total data transferred via IPC, elapsed time, throughput (MB/s through IPC). For the Queue approach, IPC data = 4 × 8 MB = 32 MB. For the shared memory approach, IPC data = 4 × ~50 bytes (statistics dict) = ~200 bytes. The IPC throughput difference is dramatic.
+
+5. Scale the experiment: repeat the benchmark for array sizes of 100K, 500K, 1M, 5M, and 10M elements. Print a table showing elapsed time for both approaches at each size. Identify the crossover point (if any) below which the Queue approach is competitive. For very small arrays (100K), the shared memory overhead may not be worth it; for large arrays (5M+), shared memory should win decisively.
+
+No solutions provided.

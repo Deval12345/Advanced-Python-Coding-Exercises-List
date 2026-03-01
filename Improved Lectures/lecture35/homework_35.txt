@@ -1,0 +1,51 @@
+Lecture 35 Homework — Async Ingestion Layer
+
+Exercise 1: Multi-Protocol AsyncSource with Health Tracking
+
+Build an async ingestion system that handles multiple sensor protocols simultaneously, with per-source health tracking.
+
+Requirements:
+1. Define an AsyncSource abstract base class (using abc.ABC) with an abstract async stream() method and a non-abstract health() method that returns a dict with at minimum: "sourceId", "recordsProduced", "lastReadTimestamp", and "consecutiveErrors".
+2. Implement two concrete AsyncSource subclasses: AsyncHTTPSensorSource (simulates an HTTP sensor — await asyncio.sleep between reads, fail with aiohttp.ClientError 10% of the time using random.random()) and AsyncMQTTSensorSource (simulates an MQTT subscription — produces bursts of 3-5 records with asyncio.sleep(0) between burst items, then asyncio.sleep(0.1) between bursts). Both must update their health() state correctly.
+3. Implement an AsyncSourceAggregator class that accepts a list of AsyncSource instances. It runs all of them concurrently using asyncio.gather (or asyncio.create_task), and puts all records into a single asyncio.Queue. It must handle individual source failures without stopping other sources — use try/except inside each ingestOne coroutine and log errors.
+4. Add a health_monitor coroutine to AsyncSourceAggregator that runs concurrently with ingestion (via asyncio.gather) and prints a health summary every 0.5 seconds, listing each source's record count and consecutive error count.
+5. Write a main that runs 3 HTTPSensorSource instances and 2 MQTTSensorSource instances for a total of 3 seconds (use asyncio.wait_for with timeout=3.0 to stop the gather), then drains the queue and prints total records per source type.
+
+---
+
+Exercise 2: Async Pipeline with Backpressure Control
+
+Implement a full async pipeline where each stage is an async generator, and backpressure is enforced between stages using bounded asyncio.Queues.
+
+Requirements:
+1. Implement an async generator function asyncFilter(inputStream, predicate) that consumes an async iterable and yields only records for which predicate(record) is True. The predicate is a regular synchronous function. Track how many records were passed vs filtered.
+2. Implement an async generator function asyncTransform(inputStream, transformFn) that applies transformFn to each record and yields the result. transformFn is synchronous. If transformFn raises, yield a "poison pill" record: {"error": str(e), "originalRecord": record} instead of skipping.
+3. Implement a stageWithQueue(inputAsyncGen, outputQueue, stageName) coroutine that reads from an async generator and puts each record into an asyncio.Queue (with maxsize=10). Measure and print the time each item spends waiting to be put into the queue (queue_wait_ms), which measures backpressure.
+4. Build a full pipeline: AsyncSensorSource -> asyncFilter (pass values 30-70) -> asyncTransform (normalize to 0-1) -> bounded queue -> consumer coroutine that reads from the queue and prints every 10th record with its queue_wait_ms.
+5. Run the pipeline with 5 sensors, each producing 20 records, and artificially slow the consumer to simulate backpressure (add asyncio.sleep(0.01) before each queue read). Print a backpressure report at the end: average queue_wait_ms, max queue_wait_ms, and number of times the producer had to wait more than 5ms.
+
+---
+
+Exercise 3: Async Source Registry with Dynamic Registration
+
+Build a registry system where async sensor sources can register and deregister themselves at runtime while ingestion continues.
+
+Requirements:
+1. Implement an AsyncSourceRegistry class with: register(source) to add a source, deregister(sourceId) to remove a source (gracefully stopping its ingestion coroutine), active_sources() to return the list of currently running sources, and an asyncio.Event for each source that signals its coroutine to stop when deregistered.
+2. Implement the ingestion engine inside AsyncSourceRegistry as a run(outputQueue, durationSec) coroutine. Use asyncio.create_task (not gather) so that new tasks can be created dynamically. Track all running tasks by sourceId.
+3. Add a controller coroutine that runs concurrently with ingestion and at t=1s registers a new source, at t=2s deregisters one of the original sources, and at t=3s registers two more sources. The registry must handle these changes without restarting existing ingestion.
+4. Each source deregistration must cleanly stop the corresponding asyncio.Task — use task.cancel() and handle asyncio.CancelledError inside the ingestOne coroutine.
+5. Write a main that starts the registry with 3 initial sources, runs the controller and ingestion concurrently for 5 seconds, then prints: total records ingested, records per source, and a timeline of registration/deregistration events.
+
+---
+
+Exercise 4: Async Ingestion with Rate Limiting and Burst Detection
+
+Implement a rate-limited async ingestion layer that detects burst events (sudden spikes in record arrival rate) and triggers alerts.
+
+Requirements:
+1. Implement an AsyncRateLimiter class with a max_rate (records per second) constructor argument. Implement an allow() async method that returns True if the current rate is below max_rate, or False if the rate limit is exceeded. Internally, use a sliding window of the last 1 second of record timestamps (use collections.deque with a time-based cleanup).
+2. Implement an AsyncRateLimitedIngester that wraps an AsyncSource and enforces rate limiting: if allow() returns False, drop the record and increment a dropped_count, then await asyncio.sleep(0.01) before trying again.
+3. Implement a BurstDetector class that monitors a sliding window of the last 0.5 seconds of record arrival timestamps. If more than burstThreshold records arrive in that window, it fires a burst_detected callback (an async function) with the current window size and start/end timestamps. The BurstDetector runs as a concurrent coroutine alongside ingestion.
+4. The burst_detected callback should log a structured alert: {"event": "BURST", "windowRecords": n, "windowDurationMs": ms, "rate": n/ms*1000, "timestamp": now}. Implement an AlertLog class with a list of all alerts and an async write method.
+5. Write a main that creates a "bursty" sensor source (alternates between asyncio.sleep(0.001) for 50 records and asyncio.sleep(0.2) for 10 records in a cycle), runs the rate limiter (max 100 records/s), burst detector (threshold 30), and alert logger concurrently for 10 seconds. At the end, print: total ingested, total dropped, number of burst alerts, and all alert details.

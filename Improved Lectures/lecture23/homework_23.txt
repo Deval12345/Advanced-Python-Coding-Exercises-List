@@ -1,0 +1,83 @@
+Homework — Lecture 23: Futures and Executors
+
+===============================================================
+EXERCISE 1 — ThreadPoolExecutor vs ProcessPoolExecutor Benchmark
+===============================================================
+
+Build a benchmark that compares the performance of ThreadPoolExecutor and ProcessPoolExecutor on CPU-bound work and measures the GIL effect directly.
+
+Requirements:
+
+1. Write a function called `computeFibonacci` that accepts a positive integer `n` and returns the nth Fibonacci number using a recursive algorithm with memoization (use `functools.lru_cache`). This is CPU-bound work.
+
+2. Write a function called `runWithExecutor` that accepts an executor class (either `ThreadPoolExecutor` or `ProcessPoolExecutor`), a `maxWorkers` integer, and a list of Fibonacci numbers to compute. It should create the executor using a `with` statement, submit all tasks using `executor.map`, collect the results as a list, and return both the results and the total elapsed time.
+
+3. Write a main block (inside `if __name__ == "__main__"`) that defines a workload of 12 tasks — computing Fibonacci numbers in the range of 30 to 36 (repeat each a few times to create 12 total tasks). Run the workload three times: (a) sequentially using a list comprehension, (b) with `ThreadPoolExecutor(max_workers=4)`, and (c) with `ProcessPoolExecutor(max_workers=4)`.
+
+4. Print the elapsed time and the results list for each of the three runs. Verify that all three produce identical results (results should match).
+
+5. Measurable expectation: due to the GIL, `ThreadPoolExecutor` for this CPU-bound workload should be roughly the same speed as sequential — possibly slower due to thread management overhead. `ProcessPoolExecutor` should show a real speedup proportional to the number of available cores on your machine. Print the speedup ratios: sequential_time / thread_time and sequential_time / process_time.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Future Lifecycle and Error Handling with as_completed
+===============================================================
+
+Build a resilient task runner that handles partial failures using Future callbacks and as_completed.
+
+Requirements:
+
+1. Write a function called `unreliableDataFetch` that accepts a `dataId` (integer) and a `failureProbability` (float between 0 and 1). It should sleep for a random duration between 0.1 and 0.8 seconds (use `random.uniform`). Then, with probability `failureProbability`, raise a `RuntimeError` formatted as "Data fetch failed for ID <dataId>". Otherwise, return a dictionary with "id" (the dataId) and "value" (the dataId squared).
+
+2. Write a function called `onFutureComplete` that serves as a done callback. It should accept a Future as its argument. If the Future has an exception, print "CALLBACK — error: <exception>". Otherwise print "CALLBACK — success: <result['id']>".
+
+3. Write a main block that submits 10 tasks to a `ThreadPoolExecutor` with 4 workers, using `unreliableDataFetch` with a `failureProbability` of 0.35. Attach `onFutureComplete` as a done callback to each submitted Future.
+
+4. Use `concurrent.futures.as_completed` to iterate over the Futures as they complete. For each completed Future, use a try/except block to call `.result()`. On success, append the result dictionary to a `successResults` list. On `RuntimeError`, append the error message to a `failureMessages` list.
+
+5. After all Futures are collected, print: the number of successes, the number of failures, the sum of all "value" fields in `successResults`, and all failure messages. Verify that the total of successes plus failures equals 10.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Hybrid Async/Thread Architecture for a Mixed Workload
+===============================================================
+
+Build a service that handles async I/O with `httpx.AsyncClient` and offloads synchronous computation with `run_in_executor`.
+
+Requirements:
+
+1. Write a synchronous function called `heavyTextAnalysis` that accepts a text string and performs three operations: (a) counts the number of words by splitting on whitespace, (b) counts the number of unique words using a set, (c) computes a simple "fingerprint" by summing the Unicode code points of all characters modulo 1000000007. Simulate the heavy work by calling `time.sleep(0.15)`. Return a dictionary with "wordCount", "uniqueWords", and "fingerprint".
+
+2. Write an async coroutine called `fetchAndAnalyze` that accepts a URL (string). Using `httpx.AsyncClient`, fetch the URL with a 10-second timeout. Extract the response text. Then offload `heavyTextAnalysis(text)` to a `ThreadPoolExecutor` using `loop.run_in_executor`. Await the executor future and return a dictionary combining "url", "statusCode", and the analysis results from the synchronous function.
+
+3. Write a main coroutine that concurrently fetches and analyzes at least four public URLs. Use `asyncio.gather` to run all four `fetchAndAnalyze` coroutines at the same time. You may use any public text-returning URLs: `https://httpbin.org/html`, `https://example.com`, `https://www.ietf.org/rfc/rfc2616.txt` (or any other text page), and a fourth of your choice.
+
+4. Print the URL, status code, word count, unique word count, and fingerprint for each result.
+
+5. Measurable requirement: the total elapsed time for four concurrent requests must be less than 1.5× the longest individual request time. If requests take an average of 0.5 seconds each, sequential execution would take 2.0 seconds; concurrent execution should take under 0.75 seconds. Print the elapsed time and verify.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — ProcessPoolExecutor with Pickling Constraints
+===============================================================
+
+Build a system that demonstrates and works around pickling constraints in ProcessPoolExecutor.
+
+Requirements:
+
+1. Write a simple class called `DataRecord` with an `__init__` that accepts `recordId` (int) and `values` (list of floats). Add a method called `computeStats` that returns a dictionary with "mean", "minimum", "maximum", and "count" of the values list.
+
+2. Write a function called `processRecord` that accepts a `DataRecord` instance and returns the dictionary from `computeStats`. This function will be submitted to a `ProcessPoolExecutor` — verify that `DataRecord` is picklable (it should be, as it has no unpicklable attributes).
+
+3. Write a function called `processRecordByIndex` that accepts a tuple of (recordId, values) — the raw data rather than the DataRecord object — and reconstructs a `DataRecord` internally before calling `computeStats`. This version avoids sending class instances across process boundaries.
+
+4. In a main block, create 8 `DataRecord` instances, each with 1000 random float values (use `random.uniform`). Run two experiments:
+   - Experiment A: submit all 8 as `processRecord(record)` tasks — passing full DataRecord instances through the pickle boundary.
+   - Experiment B: submit all 8 as `processRecordByIndex((record.recordId, record.values))` — passing only raw tuples.
+
+5. Verify that both experiments produce identical results. Time both experiments. Add a deliberate test: add a `threading.Lock` attribute to `DataRecord.__init__` (named `self.lock = threading.Lock()`) and observe that Experiment A now raises a `PicklingError` while Experiment B continues to work, because the tuple version never crosses the pickle boundary with the unpicklable lock. Print a clear message explaining the failure.
+
+No solutions provided.

@@ -1,0 +1,84 @@
+Homework — Lecture 26: Multiprocessing Part 2 — IPC Cost and Failure Scenarios
+
+===============================================================
+EXERCISE 1 — IPC Cost Benchmark: Payload Size vs. Computation
+===============================================================
+
+Build a systematic benchmark that measures how payload size affects multiprocessing speedup.
+
+Requirements:
+
+1. Write a function called `processPayload` that accepts a tuple of (taskId, data). The `data` is a list of integers. The function computes the sum of `math.sqrt(x)` for every element in the data list. Return `(taskId, round(result, 6))`.
+
+2. In a main block, create six payload configurations with different list sizes: 100, 1000, 5000, 10000, 50000, and 200000 elements. For each configuration, create 8 tasks where each task carries a list of random integers of the given size.
+
+3. For each configuration, measure: (a) sequential execution time, (b) Pool with 4 workers using `pool.map`, and (c) Pool with 4 workers using `pool.map(fn, tasks, chunksize=2)`.
+
+4. Print a table with columns: "List Size", "Seq Time", "Pool Time", "Pool+Chunk Time", "Speedup (Pool)", "Speedup (Chunk)". Observe where the speedup increases and where it peaks.
+
+5. Additional question: for the list size where sequential is fastest, compute the fraction of total task time that is spent on pickling alone. You can estimate this by running `pickle.dumps(task)` and `pickle.loads(data)` for a sample task and measuring those durations separately. Print the pickling time as a percentage of total task time. This makes the IPC cost concrete.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — ProcessPoolExecutor with Exception Handling and as_completed
+===============================================================
+
+Build a resilient parallel processor using ProcessPoolExecutor that handles worker failures gracefully.
+
+Requirements:
+
+1. Write a function called `simulateDataProcessing` that accepts a dictionary with "dataId" (int) and "values" (list of floats). If the list is empty, raise `ValueError("Empty dataset for ID <dataId>")`. If any value is negative, raise `RuntimeError("Negative value encountered in ID <dataId>")`. Otherwise compute mean, variance, and the sum of all values, and return a result dictionary.
+
+2. In a main block, generate 15 tasks using `ProcessPoolExecutor(max_workers=4)` with `executor.submit`. Include at least 2 tasks with empty lists and 2 tasks with negative values. The remaining tasks should have valid random float lists.
+
+3. Use a `{future: task}` dictionary to correlate futures back to their input tasks. Iterate with `concurrent.futures.as_completed`. For each future, catch `ValueError` and `RuntimeError` separately and print different error messages for each failure type. Collect successful results.
+
+4. After all futures complete, print a summary: total tasks submitted, number of successes, number of ValueError failures, number of RuntimeError failures. Verify these add up to 15.
+
+5. Add a done callback to every future before iterating. The callback should log the future's completion status (success or failure) to a shared list using `threading.Lock` (callbacks may fire from worker threads, so the list must be thread-safe). After all futures complete, print the callback log and verify each future fired exactly one callback.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Crossover Profiler with Chunksize Optimization
+===============================================================
+
+Build a profiler that finds the optimal pool configuration for a specific workload.
+
+Requirements:
+
+1. Write a function called `computeWorkUnit` that accepts a tuple of (unitId, iterations). It computes `sum(math.sin(i * 0.001) for i in range(iterations))` and returns `(unitId, round(result, 6))`.
+
+2. Write a function called `profileConfiguration` that accepts: a function, a task list, a `numWorkers` integer, and a `chunksize` integer. It runs the tasks using `Pool(numWorkers)` with `pool.map(fn, tasks, chunksize=chunksize)`, measures elapsed time, and returns the time.
+
+3. In a main block, generate 64 tasks with iterations=20000 (approximately 10ms of compute each). Profile the following configurations:
+   - Sequential (no pool)
+   - Pool(2), Pool(4), Pool(8) — all with default chunksize
+   - Pool(4) with chunksize=1, 4, 8, 16, 32
+
+4. Print a results table showing elapsed time and speedup relative to sequential for each configuration. Identify the "sweet spot" — the configuration with the best speedup.
+
+5. Add a second experiment with iterations=100 (less than 1ms each). Profile the same configurations. Observe that the pool almost always loses to sequential for these tiny tasks, regardless of worker count or chunksize. The contrast between the two experiments should make the crossover concept concrete.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Refactoring a "Bad" Multiprocessing Design
+===============================================================
+
+Given a flawed multiprocessing design that sends large data across process boundaries, refactor it to use the minimal-IPC pattern.
+
+Requirements:
+
+1. Write a "BAD" version of a text analysis pipeline. Generate 8 text documents (each a string of 100,000 random characters from `string.ascii_lowercase + " "`). The bad version serializes each full document and sends it to a worker process via Pool.map. The worker function `analyzeDocumentBad` accepts the full text string and returns word count, character count, and unique character count.
+
+2. Save each document to a temporary file on disk using Python's `tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)`. Record the file path in a list.
+
+3. Write a "GOOD" version. The good version sends only file paths (strings, a few bytes each) to workers. The worker function `analyzeDocumentGood` accepts a file path, reads the document from disk itself, and performs the same analysis. All disk reading happens inside the worker's private memory space.
+
+4. Benchmark both versions with a Pool of 4 workers. Print the elapsed time for the bad version and the good version. Also measure and print the IPC payload size per task for each version: `len(pickle.dumps(task))` bytes for the bad version (document bytes) and the good version (file path bytes). The difference should be dramatic — thousands of bytes vs. a few dozen.
+
+5. Verify correctness: both versions must produce identical word counts, character counts, and unique character counts for the same documents. Clean up the temporary files after the benchmark using `os.unlink(path)`.
+
+No solutions provided.

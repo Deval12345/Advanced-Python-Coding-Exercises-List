@@ -1,0 +1,81 @@
+Homework — Lecture 30: Race Conditions and Deadlock in Concurrent Python
+
+===============================================================
+EXERCISE 1 — Demonstrating and Measuring Race Conditions
+===============================================================
+
+Build a systematic demonstration of race conditions with quantitative measurement of data corruption.
+
+Requirements:
+
+1. Write an `UnsafeBankAccount` class with attributes `balance` (float) and a `transfer(amount)` method that reads the balance, sleeps for `random.uniform(0.000005, 0.00002)` seconds, then writes back the modified balance. A positive amount is a deposit; negative is a withdrawal. Write a `SafeBankAccount` class with the same interface but protected by a `threading.Lock`.
+
+2. Write a `runTransactions(account, transactions)` function where `transactions` is a list of amounts. It creates one thread per transaction and starts all threads simultaneously. Each thread calls `account.transfer(amount)`. All threads are joined before returning. Return the final balance.
+
+3. In a main block, create both account types with initial balance 10000.0. Generate 50 transactions: 25 deposits of 100.0 each and 25 withdrawals of 100.0 each (net change should be 0.0). Run `runTransactions` on both accounts. The expected final balance is 10000.0.
+
+4. Print the results: unsafe balance (expected 10000.0, actual likely different), safe balance (always 10000.0), and the error amount (unsafe balance minus expected). Run the full experiment 5 times and collect the error amounts. Print the mean and maximum error across the 5 runs.
+
+5. Vary the sleep duration (the race window): run the experiment with sleep durations of 0, 0.00001, 0.0001, and 0.001 seconds. Print the error rate (fraction of 5 runs where unsafe balance differs from 10000.0) for each duration. Observe that even with zero sleep, occasional races may occur (though rarely). With longer sleep, races occur on nearly every run.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Building a Thread-Safe Data Structure
+===============================================================
+
+Build a thread-safe statistics accumulator that handles concurrent updates from many threads correctly.
+
+Requirements:
+
+1. Write a `ThreadSafeAccumulator` class that tracks: count (int), sum (float), sum of squares (float), minimum (float), and maximum (float). All updates must be protected by a single `threading.Lock`. Provide an `update(value)` method that updates all five statistics atomically. Provide a `stats()` method that returns a dictionary with count, mean, variance, min, and max (computed under the lock).
+
+2. Write a test function that spawns N threads, each calling `accumulator.update(value)` M times with random float values from a known range. After all threads join, verify: the count equals N * M, the mean is approximately the expected mean of the random distribution, and all values are within the expected range (min >= lower bound, max <= upper bound). Assert all conditions.
+
+3. Write an `UnsafeAccumulator` with the same interface but no lock. Run the same test on both. The unsafe version will have the wrong count (due to lost updates on the integer increment), wrong sum (due to lost float updates), and potentially wrong min/max. Print all statistics for both and highlight discrepancies.
+
+4. Measure throughput: time how long it takes to run 4 threads × 10000 updates each on the safe accumulator. Compute updates per second. Then run the same test with 1, 2, 4, and 8 threads and print the throughput at each thread count. Observe that throughput may decrease at higher thread counts due to lock contention (many threads competing for the same lock).
+
+5. Refactor the safe accumulator to use `threading.RLock` instead of `threading.Lock`. Add a `conditionalUpdate(value, condition_fn)` method that: acquires the lock, evaluates `condition_fn(self.stats())`, and only calls `self.update(value)` if the condition is True. Since `stats()` also acquires the lock, this requires RLock to avoid self-deadlock. Verify this works correctly.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Deadlock Detection and Prevention
+===============================================================
+
+Build a system that demonstrates deadlock, detects it via timeout, and applies the consistent-ordering fix.
+
+Requirements:
+
+1. Create 4 locks: `lockW`, `lockX`, `lockY`, `lockZ`. Write 4 thread functions that acquire pairs of locks in inconsistent orders creating a potential cycle: thread1 acquires W then X; thread2 acquires X then Y; thread3 acquires Y then Z; thread4 acquires Z then W. Add a 0.05 second sleep between the two acquisitions so all four threads can each acquire their first lock before any tries for their second.
+
+2. Run all 4 threads simultaneously. Use `thread.join(timeout=2.0)` for each. After joining, check `thread.is_alive()`. Print which threads are still alive after the 2-second timeout — these are the deadlocked threads. Print "DEADLOCK DETECTED" if any thread is still alive.
+
+3. Write safe versions of all 4 thread functions that acquire the same two locks but always in the global order W < X < Y < Z (lexicographic by lock name). Run the safe versions. Verify all threads complete within 2 seconds. Print "NO DEADLOCK" and total elapsed time.
+
+4. Implement a `trylock` approach as an alternative deadlock avoidance strategy: use `lock.acquire(timeout=0.1)` which returns False if the lock cannot be acquired within 0.1 seconds. If acquire returns False, release all held locks and retry from the beginning (back-off and retry). Write a thread function that uses this approach and can acquire both locks without deadlocking. Retry up to 5 times before giving up.
+
+5. Compare all three approaches: naive (deadlocks), consistent ordering (never deadlocks), and trylock with backoff (may need retries but never permanently deadlocks). Run each approach 3 times and report: number of successful completions, average elapsed time, number of lock retries (for trylock). Print a comparison table.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Producer-Consumer with threading.Condition
+===============================================================
+
+Build a bounded thread-safe queue using threading.Condition without using Python's queue.Queue.
+
+Requirements:
+
+1. Write a class called `BoundedQueue` with a maximum size. Internally use a collections.deque, a threading.Condition (wrapping a threading.Lock), and the maxsize. Implement `put(item)` that acquires the condition, waits in a while loop while the queue is full (`while len(self._queue) >= self._maxsize: self._cond.wait()`), appends the item, calls `self._cond.notify()`, and releases. Implement `get()` that waits while empty, pops from the front, and notifies.
+
+2. Write a producer thread function `produce(queue, numItems, producerId)` that puts integers 0 through numItems-1 into the queue, with `time.sleep(random.uniform(0.001, 0.005))` between puts. Write a consumer thread function `consume(queue, numItems, consumerId, results)` that gets numItems items from the queue and appends them to a thread-safe results list (use a separate threading.Lock for the results list).
+
+3. Run 2 producers (each producing 20 items) and 3 consumers (each consuming about 13-14 items) simultaneously using a `BoundedQueue(maxsize=5)`. After all producers and consumers finish, verify the results list contains exactly 40 items and that every item from 0 to 19 appears exactly twice (once from each producer). Print a verification report.
+
+4. Add a "done" sentinel mechanism: after a producer finishes, it puts a special sentinel object (a unique object created with `object()`) into the queue. Consumers count sentinels; when a consumer has seen all expected sentinels (2 producers = 2 sentinels), it stops consuming. This is the Condition-based equivalent of the poison-pill pattern from Lecture 27.
+
+5. Measure throughput: time the full producer-consumer run with maxsize values of 1, 5, 10, 20, and 100. Print elapsed time for each. Observe that very small maxsize (maxsize=1) creates a tight bottleneck (producers and consumers must perfectly alternate) while larger maxsize allows batching. Identify the point of diminishing returns — where increasing maxsize no longer significantly reduces elapsed time.
+
+No solutions provided.

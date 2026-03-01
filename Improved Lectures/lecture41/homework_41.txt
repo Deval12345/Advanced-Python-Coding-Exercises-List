@@ -1,0 +1,81 @@
+Homework — Lecture 41: Big Project Stage 8 Part 1 — Advanced Internals: Descriptors, Memory, and Protocol Enforcement
+
+===============================================================
+EXERCISE 1 — Extend AuditedAttribute with Per-Instance Change Logs
+===============================================================
+
+Improve the descriptor-based monitoring system to support per-instance audit logs rather than a shared class-level log.
+
+Requirements:
+
+1. Write an improved descriptor class called `PerInstanceAuditedAttribute`. It must store the change log on the monitored object itself — not on the descriptor — using the private name key as a log key. For example, if the attribute is named "status", store the log at `_audit_log_status` on the instance. The descriptor's `__get__` should read the value from the private name as before; `__set__` should read or initialize the per-instance log and append each change event there.
+
+2. Update `MonitoredPipelineStage` to use `PerInstanceAuditedAttribute` for all three attributes: `recordsProcessed`, `meanLatencyMs`, and `errorCount`. Create two separate `MonitoredPipelineStage` instances — `stageA` and `stageB` — and simulate different processing on each. Verify that their change logs are independent.
+
+3. Add a method to `MonitoredPipelineStage` called `getChangeLog(attrName)` that retrieves the per-instance log for a given attribute name by reading the `_audit_log_{attrName}` key from the instance's `__dict__`. Return an empty list if no log exists.
+
+4. Write a function called `diffStageSnapshots(stageA, stageB, attrName)` that compares the final values of the named attribute on both stages and returns a dict: `{"stageA": finalValueA, "stageB": finalValueB, "delta": abs(finalValueA - finalValueB)}`. Handle the case where an attribute has never been set (value is None).
+
+5. Print a comparison table for all three monitored attributes between `stageA` and `stageB`. Show the attribute name, final value for each stage, and delta. Verify that change log lengths differ between the two stages, confirming log isolation.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Slots Deep Dive: Memory Layout Under the Microscope
+===============================================================
+
+Quantify the true memory cost difference between slotted and unslotted instances at multiple scales.
+
+Requirements:
+
+1. Write a class called `SensorEventSlotted` with `__slots__ = ("sensorId", "timestamp", "value", "unit", "quality", "flags")`. Write an equivalent class `SensorEventUnslotted` with the same six attributes stored as regular instance variables. Both classes should have identical `__init__` signatures.
+
+2. Write a function called `measureInstanceSize(cls, n=100_000)` that creates `n` instances of the given class and uses `tracemalloc` to measure peak memory in megabytes. It should also return `sys.getsizeof` of a single instance (shell size only) and the sum of `sys.getsizeof` for all direct attribute values of one instance. Print all three metrics.
+
+3. Verify an important nuance: `sys.getsizeof` does not measure referenced objects. Write a function called `deepInstanceSize(instance)` that computes the total size of an instance by summing `sys.getsizeof(instance)` plus `sys.getsizeof(v)` for every value accessible on the instance (via `vars()` for unslotted or via slots for slotted). Compare the two approaches for each class.
+
+4. Test inheritance interaction: write a class `ExtendedSensorEvent` that inherits from `SensorEventSlotted` and adds two more slots: `"corrected"` and `"notes"`. Verify that it also has no `__dict__`. Then write a class `BrokenInheritance` that inherits from `SensorEventSlotted` but does NOT declare `__slots__`. Verify that `BrokenInheritance` instances DO have `__dict__`, explaining why slot savings are lost when a subclass forgets `__slots__`.
+
+5. Run `measureInstanceSize` on all four classes — `SensorEventSlotted`, `SensorEventUnslotted`, `ExtendedSensorEvent`, `BrokenInheritance` — and print a comparison table. Include columns for class name, shell size in bytes, peak memory for 100k instances in MB, and whether `__dict__` is present.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Protocol Enforcement at the Boundary Layer
+===============================================================
+
+Add runtime protocol verification to the pipeline so that invalid stages are caught before any data flows through.
+
+Requirements:
+
+1. Define a `typing.Protocol` class called `PipelineStageProtocol` with a single method `transform(self, stream)`. Mark it with `@runtime_checkable`. Similarly define `SourceProtocol` with method `stream(self)` and `SinkProtocol` with method `consume(self, stream)`.
+
+2. Write a function called `validatePipeline(source, stages, sink)` that checks all three components using `isinstance` against their protocols. If any component fails, raise a `TypeError` with a message that names the component and explains which protocol it violated. On success, print "Pipeline validation passed: N stages registered."
+
+3. Write three deliberately broken classes: `BrokenSource` (no `stream` method), `BrokenStage` (has a method called `process` instead of `transform`), and `BrokenSink` (has `write` instead of `consume`). Verify that `validatePipeline` raises `TypeError` for each broken component.
+
+4. Write a class called `TypedPipelineBuilder` that acts as a builder for validated pipelines. It should have methods `setSource(source)`, `addStage(stage)`, and `setSink(sink)` — each of which validates the argument against its protocol immediately, raises a `TypeError` if invalid, and stores the component if valid. It should also have a method `build()` that calls `validatePipeline` on all stored components and then returns the assembled pipeline as a generator by calling `buildPipeline(source, stages)`.
+
+5. Demonstrate the full builder workflow: create a valid `SyntheticSource`, two valid transform stages, and a valid `ConsoleSink`. Use `TypedPipelineBuilder` to assemble and run the pipeline. Then attempt to add a broken stage and verify that the error is caught and the builder's state is unchanged (the invalid stage was not stored).
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Combine All Three Internals in the Live Pipeline
+===============================================================
+
+Integrate descriptor monitoring, slots optimization, and protocol enforcement into the production pipeline simultaneously.
+
+Requirements:
+
+1. Create a class called `InstrumentedSlottedRecord` that uses `__slots__` for its six sensor fields AND uses `PerInstanceAuditedAttribute` descriptors for three of them: `value`, `normalized`, and `rollingAvg`. Verify that slots and descriptors coexist correctly — you will need to understand that descriptors are stored at the class level, so slot and descriptor names must not conflict. Hint: `__slots__` should NOT include the attribute names managed by descriptors; instead use the private storage names as slots.
+
+2. Modify the `buildPipeline` function to use `TypedPipelineBuilder` internally: it should validate every stage before composing the generator chain. If any stage fails protocol validation, raise a descriptive error immediately rather than failing silently at runtime.
+
+3. Create a `MonitoredPipelineRunner` class that wraps the full pipeline lifecycle. Its constructor should accept a source, a list of stages, and a sink. It should validate all components via `validatePipeline`, then expose a `run()` method that drives the pipeline and collects aggregate stats: total records processed, total time elapsed, and the total number of descriptor change events recorded across all monitored stages.
+
+4. Instrument a 3-stage pipeline using `MonitoredPipelineRunner`: `SyntheticSource(numRecords=100)` → `ThresholdFilter` → `NormalizeTransform` → `MovingAverageTransform` → `ConsoleSink`. After running, print: records processed, elapsed time, and total change events. Use `tracemalloc` to measure peak memory during the run.
+
+5. Write a final summary function called `printPipelineReport(runner, peakMemoryMB)` that prints a formatted report: pipeline stages listed in order, records processed, elapsed time in milliseconds, peak memory usage in MB, and a descriptor change event count. This simulates the kind of observability report a production pipeline would emit after each run.
+
+No solutions provided.

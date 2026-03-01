@@ -1,0 +1,81 @@
+Homework — Lecture 27: Coordination Speed Trade-off in Multiprocessing
+
+===============================================================
+EXERCISE 1 — Poison-Pill Shutdown Pattern Implementation
+===============================================================
+
+Build a worker pool that uses the poison-pill pattern for graceful shutdown across multiple worker processes consuming from a shared Queue.
+
+Requirements:
+
+1. Write a worker function called `processTask` that accepts a `taskQueue` and a `resultQueue`. In a loop, it reads items from `taskQueue`. If the item is None (the poison-pill), it puts its own worker ID into `resultQueue` as a shutdown acknowledgment and returns. Otherwise it computes `sum(math.sqrt(i) for i in range(item))` and puts the result tuple `(item, round(result, 4))` into `resultQueue`.
+
+2. In a main block, create a `multiprocessing.Queue` for tasks and a `multiprocessing.Queue` for results. Spawn 4 worker processes. Submit 20 tasks with values randomly chosen from the range 10000 to 100000. After all tasks are submitted, put exactly 4 None sentinels into the task queue — one per worker.
+
+3. Join all workers after submitting sentinels. After all workers have joined, drain the result queue completely. Separate the results into two lists: computation results (tuples of input/output) and shutdown acknowledgments (worker IDs). Print both lists.
+
+4. Verify correctness: the number of computation results must equal 20. The number of shutdown acknowledgments must equal 4. Assert both conditions and print a confirmation message.
+
+5. Extend the design to handle a "priority shutdown" scenario: after submitting 10 of the 20 tasks, check whether a random condition is True (simulate with `random.random() < 0.5`). If True, immediately put 4 None sentinels into the queue (before the remaining 10 tasks) and stop submitting. If False, submit the remaining 10 tasks before the sentinels. In either case, the workers must shut down cleanly. Print how many tasks were actually processed.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Cooperative Early-Exit with Shared Flag
+===============================================================
+
+Implement a parallel search system with cooperative early termination using multiprocessing.Value.
+
+Requirements:
+
+1. Write a function called `searchForTarget` that accepts `workerId`, `dataChunk` (a list of integers), `targetValue`, `foundFlag`, and `resultQueue`. It iterates through `dataChunk`. At each iteration, it first checks `foundFlag.value`; if True, it returns immediately without continuing. If it finds an element equal to `targetValue`, it acquires `foundFlag.get_lock()`, performs the double-check (`if not foundFlag.value`), sets `foundFlag.value = True`, puts `(workerId, targetValue, dataChunk.index(targetValue))` into `resultQueue`, and returns.
+
+2. In a main block, generate a list of 1,000,000 random integers between 0 and 9999. Split the list into 4 equal chunks. Choose a target value that exists somewhere in the data — use `random.choice(data)` to guarantee the target is present. Create the shared flag and result queue.
+
+3. Spawn 4 worker processes, each receiving one chunk, the same target value, the shared flag, and the result queue. Start all workers and record the start time. Join all workers. Record the elapsed time.
+
+4. After all workers join, read the result from `resultQueue`. Print the finding worker ID, the target value found, and the elapsed time. Also print how many workers exited early (you can estimate this by checking if the result position is in the first quarter of the full dataset — if so, workers 1, 2, 3 likely exited early).
+
+5. Run the same search sequentially (no multiprocessing) for comparison: iterate through the full 1,000,000 element list and find the first occurrence of the target. Measure elapsed time. Print both elapsed times and compute the speedup. Discuss in a comment why the speedup may be less than 4× even with 4 workers.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Check Frequency Benchmark
+===============================================================
+
+Build a systematic benchmark that measures the performance impact of different flag-check intervals in a parallel worker.
+
+Requirements:
+
+1. Write a general worker function called `countPrimesWithCheckInterval` that accepts `limit`, `checkInterval`, `sharedFlag`, and a `resultQueue`. It counts primes up to `limit` using trial division. Every `checkInterval` iterations, it checks `sharedFlag.value` and returns early if True. It puts the final count into `resultQueue` when done (either from early exit or natural completion).
+
+2. In a main block, define a list of check intervals to benchmark: `[1, 5, 10, 50, 100, 500, 1000, 5000]`. For each interval, create 4 workers with `limit=30000` and `sharedFlag` set to False (workers run to completion — we are measuring pure coordination overhead, not early-exit). Measure elapsed time for all 4 workers to complete.
+
+3. Print a results table with columns: "Check Interval", "Elapsed (s)", "Flag Reads (estimated)", "Time per Flag Read (ns)". Estimate flag reads as `(limit / checkInterval) * 4` workers. Compute time per flag read as `(total_overhead) / estimated_flag_reads * 1e9` where total overhead is the difference from the rarest-check baseline.
+
+4. Plot or describe (in a comment) the shape of the curve: at very frequent checking, coordination overhead is high; at very rare checking, overhead is negligible. Identify the "knee" of the curve — the interval at which increasing check frequency starts to noticeably impact performance.
+
+5. Add a second phase: run the same benchmark but with `sharedFlag` set to True from the start (all workers should exit immediately at their first check). Measure how long it takes all 4 workers to start and join when they exit at the first possible check point. This measures the minimum response latency as a function of check interval — the time between a flag being set and all workers having exited.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Manager vs. Value Performance Comparison
+===============================================================
+
+Build a direct performance comparison between Manager.Value and multiprocessing.Value for a shared counter updated by multiple workers.
+
+Requirements:
+
+1. Write two worker functions: `incrementWithManager(managerId, managerCounter, iterations)` and `incrementWithValue(workerId, valueCounter, lock, iterations)`. The Manager version uses `managerCounter.value += 1` inside a loop (Manager handles locking internally). The Value version uses `with lock: valueCounter.value += 1` with an explicit `threading.Lock()` passed in — but note that for multiprocessing you should use the Value's built-in lock: `with valueCounter.get_lock(): valueCounter.value += 1`.
+
+2. For the Manager version: create a `multiprocessing.Manager()` context, then `manager.Value('i', 0)`. Spawn 4 worker processes each running 500 iterations. Measure elapsed time. Print the final counter value and verify it equals 4 * 500 = 2000.
+
+3. For the Value version: create `multiprocessing.Value('i', 0)`. Spawn 4 worker processes each running 500 iterations. Use the Value's built-in lock (`get_lock()`). Measure elapsed time. Print the final counter value and verify it equals 2000.
+
+4. Print a comparison table: mechanism, elapsed time, final counter value, time per increment. Compute the speedup of Value over Manager. The speedup should be significant — typically 10× to 100× — because Manager routes every increment through an IPC round-trip while Value uses a local memory access.
+
+5. Add a third comparison: an `UnsafeValue` version where workers increment `valueCounter.value += 1` without any lock. Run it with the same parameters. The final counter will almost certainly be less than 2000 due to race conditions. Print the final value and compute how many increments were lost. This demonstrates why the lock is required even for Value — raw reads and writes to shared memory are not atomic at the Python level.
+
+No solutions provided.

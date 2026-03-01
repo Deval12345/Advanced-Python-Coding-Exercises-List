@@ -1,0 +1,86 @@
+Homework — Lecture 22: The Async Event Loop
+
+===============================================================
+EXERCISE 1 — Event Loop Visualization: Blocking vs Non-Blocking
+===============================================================
+
+Build two versions of a concurrent task runner and measure the difference between a blocking and a non-blocking approach.
+
+Requirements:
+
+1. Write a synchronous function called `cpuHeavyTask` that accepts a `taskId` (string) and a `duration` (float). It should call `time.sleep(duration)` to simulate a blocking operation, then return a string formatted as "Completed <taskId> after <duration>s".
+
+2. Write an async coroutine called `blockingApproach` that accepts a list of tuples of the form (taskId, duration). For each tuple, call `cpuHeavyTask` directly from inside the coroutine — this is the WRONG way. Use `time.perf_counter` before and after to measure total elapsed time. The tasks should run sequentially because each one blocks the event loop.
+
+3. Write an async coroutine called `nonBlockingApproach` that accepts the same list of tuples. For each tuple, use `loop.run_in_executor(None, cpuHeavyTask, taskId, duration)` to submit the task to the default thread pool. Collect all the resulting asyncio futures and await them with `asyncio.gather`. Measure total elapsed time.
+
+4. Write a main coroutine that creates a list of five tasks with durations ranging from 0.2s to 0.5s. Run `blockingApproach` and print its elapsed time. Then run `nonBlockingApproach` and print its elapsed time.
+
+5. Measurable requirement: `blockingApproach` should take approximately the sum of all task durations (sequential). `nonBlockingApproach` should take approximately the duration of the longest task (concurrent). The ratio should clearly demonstrate the event loop stall in the blocking version.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Cooperative Batch Processor with asyncio.sleep(0)
+===============================================================
+
+Build a batch data processor that uses `asyncio.sleep(0)` to remain cooperative with a background monitoring task.
+
+Requirements:
+
+1. Write an async coroutine called `batchProcessor` that accepts a list of numeric items and a `batchSize` (integer, default 500). It should process each item by computing `item ** 2 + item * 3` and appending the result to an output list. After every `batchSize` items, it should `await asyncio.sleep(0)` to yield control to the event loop and print a progress message showing how many items have been processed so far.
+
+2. Write an async coroutine called `heartbeatMonitor` that accepts a `label` (string) and an `interval` (float). It should loop indefinitely, printing a heartbeat message containing the label and the current timestamp from `time.perf_counter`, then `await asyncio.sleep(interval)`.
+
+3. Write a main coroutine that creates a list of 5000 random integers (use `random.randint`). Create the `heartbeatMonitor` as a background task using `asyncio.create_task`. Then `await batchProcessor` with the list. After the processor completes, cancel the heartbeat task and `await` it with `return_exceptions=True` to drain the `CancelledError` cleanly. Print the total number of processed items.
+
+4. Run the program twice: once with `await asyncio.sleep(0)` inside the loop, and once with the yield line commented out. Observe the difference in heartbeat output. In the version without yields, the heartbeat should print rarely or not at all while the batch runs.
+
+5. Add a measurable check: count the number of heartbeat ticks that fired during processing by incrementing a shared counter inside the heartbeat coroutine. Print the tick count at the end. The version with yields should show more ticks.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Safe Async HTTP Client with run_in_executor Fallback
+===============================================================
+
+Build an HTTP client that uses async-native requests where possible and falls back to `run_in_executor` for a legacy synchronous library.
+
+Requirements:
+
+1. Install `httpx` (pip install httpx[asyncio]). Write an async coroutine called `fetchAsync` that accepts a URL string and uses `httpx.AsyncClient` inside an `async with` block to perform a GET request. It should return a dictionary with "url", "status", and "bytes" (the content length of the response body).
+
+2. Write a synchronous function called `fetchSync` that accepts a URL string and uses `httpx.Client` (the synchronous client) to perform a GET request. It should return the same dictionary format as `fetchAsync`.
+
+3. Write an async coroutine called `fetchWithFallback` that accepts a URL and a boolean `useSync`. If `useSync` is False, call `fetchAsync` directly. If `useSync` is True, offload `fetchSync` to a thread pool using `loop.run_in_executor(None, fetchSync, url)`. In both cases, return the resulting dictionary.
+
+4. Write a main coroutine that builds a list of five URLs from a public API (use `https://httpbin.org/get` with different query parameters for variety, or use `https://jsonplaceholder.typicode.com/posts/1` through `/posts/5`). Run two experiments: first, gather all five using `fetchWithFallback` with `useSync=False`. Second, gather all five using `fetchWithFallback` with `useSync=True`. Time both experiments.
+
+5. Print the elapsed time for both experiments and verify that both complete in approximately the same time (both are concurrent despite the different mechanisms) and that both produce correct results.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Event Loop Internal Observation
+===============================================================
+
+Build a diagnostic tool that reveals event loop behavior by measuring how blocking delays affect all concurrent coroutines.
+
+Requirements:
+
+1. Write a coroutine called `sensitiveHealthCheck` that loops indefinitely. On each iteration it records the current time, waits for `asyncio.sleep(0.1)`, and records the time again after waking. It computes the actual sleep duration (time after minus time before) and appends it to a shared list. If the actual duration is more than 50% longer than expected (0.1s × 1.5 = 0.15s), it logs a warning containing "STALL DETECTED" and the actual duration.
+
+2. Write a coroutine called `simulateWork` that accepts a `label` (string), a `blockDuration` (float), and a `doBlock` (boolean). If `doBlock` is True, it should call `time.sleep(blockDuration)` — the blocking version. If False, it should call `await asyncio.sleep(blockDuration)` — the cooperative version. Before and after, it should print timestamped start and end messages.
+
+3. Write a main coroutine that:
+   - Starts `sensitiveHealthCheck` as a background task
+   - Runs three `simulateWork` coroutines concurrently using `asyncio.gather`, all with `doBlock=False` (cooperative), measures elapsed time, and captures the stall warnings
+   - Cancels the health check, drains the results list, and prints any stalls detected
+   - Repeats the experiment with one of the three `simulateWork` coroutines using `doBlock=True`
+   - Compares the number of stall warnings between the two experiments
+
+4. In the cooperative experiment, stall warnings should be zero or minimal. In the blocking experiment, stall warnings should be visible and frequent during the blocking coroutine's execution.
+
+5. Print a summary: "Cooperative run: N stalls detected. Blocking run: M stalls detected." The contrast should be dramatic and directly demonstrate the event loop stall problem.
+
+No solutions provided.

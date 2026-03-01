@@ -1,0 +1,51 @@
+Lecture 34 Homework — Resource Lifecycle Architecture
+
+Exercise 1: Tiered PipelineContext with Nested Resource Management
+
+Build a TieredPipelineContext that manages multiple resource tiers — a database connection, a file handle for logging, and a network socket for output — and tracks which tier caused a failure.
+
+Requirements:
+1. Implement a TieredPipelineContext class with __enter__ and __exit__ methods. In __enter__, open three simulated resources in sequence: a "database connection" (a dict with a "connected" flag), a "log file" (use io.StringIO as a simulated file), and a "output socket" (another dict with a "bound" flag). Store each resource as an instance attribute.
+2. In __exit__, close all three resources in reverse order (socket first, file second, database last). For each resource, print which tier is being closed. If an exception occurred, determine which tier was responsible by checking if self._failedTier was set during run, and print it in the cleanup message.
+3. Implement a run(stages, records) method that processes records through the given stages (each stage is a function that transforms a list of records). If any stage raises, set self._failedTier to the stage's name (access it via stage.__name__) before re-raising.
+4. Add a summary() method that returns a dict with: "pipelineId", "recordsIn", "recordsOut", "durationMs", and "tiersOpened" (a list of tier names successfully opened). Call this from __exit__ regardless of success or failure.
+5. Write a main block that creates two pipeline stages (one that filters records with value > 50, one that doubles every value), runs a batch of 20 random records through TieredPipelineContext, and handles the case where one stage randomly raises RuntimeError 20% of the time. Print the summary dict at the end.
+
+---
+
+Exercise 2: Generic Descriptor Library
+
+Build a reusable descriptor library with four descriptor types that cover common validation patterns, then apply them to a real configuration class.
+
+Requirements:
+1. Implement a NonEmptyString descriptor that rejects empty strings and non-string types. On __set__, strip whitespace and raise ValueError if the result is empty. Store under a private name using __set_name__. __get__ should return the descriptor itself when accessed on the class.
+2. Implement a RangeFloat descriptor that accepts a min_val and max_val constructor argument. Validates that the value is a float or int, converts to float, and rejects values outside [min_val, max_val] inclusive with a clear ValueError message.
+3. Implement a OneOf descriptor that accepts a list of allowed_values in its constructor. Validates that the assigned value is in the allowed list. The error message must list all allowed values.
+4. Implement a PositiveInt descriptor that rejects non-integers (strict — no floats), zero, and negative values.
+5. Define a SensorConfig class that uses all four descriptors: sensorId as NonEmptyString, calibrationFactor as RangeFloat(0.5, 2.0), outputFormat as OneOf(["json", "csv", "binary"]), and bufferSize as PositiveInt. Write a main block that creates a valid SensorConfig, then attempts five invalid assignments (one per descriptor type, plus one extra), catching and printing each error.
+
+---
+
+Exercise 3: Composable Metrics Decorator System
+
+Build a metrics system using decorators that can be stacked and that produces a structured metrics report at the end of a pipeline run.
+
+Requirements:
+1. Create a MetricsRegistry class (singleton — use a class-level dict) that stores StageMetrics objects keyed by stage name. Implement a register(name, metrics) method and a report() method that prints a formatted table of all registered stages with their throughput and mean latency.
+2. Implement a @counted_stage(stageName) decorator that wraps a generator method and tracks: recordsIn, recordsOut, and filterRatio (recordsOut / recordsIn). After the generator is exhausted, register the metrics with MetricsRegistry.
+3. Implement a @timed_stage(stageName) decorator that tracks per-record latency (time between consecutive yields) and total throughput. Store p50, p95, and p99 latency percentiles by sorting the latency list. After exhaustion, register with MetricsRegistry.
+4. Make the two decorators composable: applying both @counted_stage and @timed_stage to the same method should work correctly and register two separate entries (or merge them into one entry — your choice, but document it).
+5. Build a three-stage pipeline (threshold filter, normalizer, feature extractor) using both decorators on each stage. Run 5,000 records through the full pipeline and call MetricsRegistry.report() at the end, showing a formatted table with all stage metrics.
+
+---
+
+Exercise 4: Retry Decorator with Exponential Backoff and Circuit Breaking
+
+Build a production-grade retry system that combines exponential backoff with a simple circuit breaker, implemented as composable decorators.
+
+Requirements:
+1. Implement an @exponential_backoff(maxAttempts, baseDelaySec, maxDelaySec) decorator. On each failure, the delay doubles: attempt 1 waits baseDelaySec, attempt 2 waits baseDelaySec * 2, attempt 3 waits baseDelaySec * 4, capped at maxDelaySec. Use time.sleep for delays. After maxAttempts, re-raise the last exception. Print a message before each retry showing the attempt number and delay.
+2. Implement a CircuitBreakerDecorator class (not a function decorator — a class with __call__) that wraps a function. It tracks consecutive failures. After failureThreshold consecutive failures, it enters OPEN state and raises CircuitOpenError (define this exception class) without calling the function. After recoveryTimeout seconds, it enters HALF_OPEN and allows one attempt. If that attempt succeeds, return to CLOSED. If it fails, return to OPEN.
+3. Define a custom exception hierarchy: PipelineError as the base, IORetryExhausted(PipelineError) for when all retries fail, and CircuitOpenError(PipelineError) for when the circuit breaker fast-fails.
+4. Implement an UnreliableSensorSource class whose stream() generator reads (simulated) sensor values but raises IOError 40% of the time on each read. Apply @exponential_backoff to the read method (not the whole generator) and wrap the source in a CircuitBreakerDecorator.
+5. Write a main block that runs the source for 30 simulated reads. Catch IORetryExhausted and CircuitOpenError separately, printing different messages for each. Track and print: total reads attempted, successful reads, IORetryExhausted occurrences, and CircuitOpenError occurrences.

@@ -1,0 +1,81 @@
+Homework — Lecture 33: Big Project Stage 1 — Pluggable Analytics Engine
+
+===============================================================
+EXERCISE 1 — Implement the Sink Protocol: Three Output Destinations
+===============================================================
+
+Build the Sink layer of the Pluggable Analytics Engine.
+
+Requirements:
+
+1. Write a class called `ConsoleSink` with a `consume(stream)` method that prints each record from the stream to standard output. Each line should show: timestamp (formatted to 3 decimal places), sensorId, value (4 decimal places), and unit. After consuming all records, print a summary line: "ConsoleSink: consumed N records."
+
+2. Write a class called `JsonFileSink` that accepts a `filePath` string in its constructor. Its `consume(stream)` method should open the file for writing, write each record as a single line of JSON (using `json.dumps`), and close the file when the stream is exhausted. After writing, print "JsonFileSink: wrote N records to <filePath>."
+
+3. Write a class called `ThresholdAlertSink` that accepts a `threshold` (float) and a `callbackFn` (a function) in its constructor. Its `consume(stream)` method should pass every record through. Whenever `record["value"] > threshold`, it should call `callbackFn(record)` with the breaching record. At the end, print how many alerts were triggered.
+
+4. Write a class called `MultiSink` that accepts a list of sink instances in its constructor. Its `consume(stream)` method must deliver every record to ALL sinks simultaneously. This requires collecting the stream into a list first (since a generator can only be consumed once), then calling each sink's `consume(iter(recordList))`. Do this efficiently.
+
+5. Test all four sinks by creating a `SyntheticSource` with 30 records and running them through a three-stage pipeline (ThresholdFilter, NormalizeTransform, MovingAverageTransform). Connect the pipeline output to a `MultiSink` containing a `ConsoleSink`, a `JsonFileSink`, and a `ThresholdAlertSink` with threshold=0.7. Verify that the JSON file contains the same number of records as the ConsoleSink reports, and that alert count matches the number of records with normalized value > 0.7.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Extend the Pipeline with a New Stage: DerivativeTransform
+===============================================================
+
+Add a new pipeline stage without modifying any existing code.
+
+Requirements:
+
+1. Write a class called `DerivativeTransform` that computes the numerical derivative of sensor values — the rate of change between consecutive readings. It should maintain the previous record's value and timestamp as instance state. For each new record, compute `derivative = (currentValue - previousValue) / (currentTimestamp - previousTimestamp)` (in units per second). Yield the record with an additional key "derivative" added. For the very first record (no previous value), set "derivative" to 0.0.
+
+2. Write a class called `StdDevWindowTransform` that accepts a `windowSize` integer. For each record, maintain a sliding window of the last N values (use `deque(maxlen=windowSize)`). Compute the population standard deviation of the window and add it to the record as "windowStddev". Use only standard library math — no NumPy. For windows smaller than `windowSize`, compute the standard deviation on whatever is available.
+
+3. Create a new pipeline with `SyntheticSource(sensorId="FLOW_01", numRecords=25)` and the stages: ThresholdFilter(0, 100), DerivativeTransform, StdDevWindowTransform(windowSize=8), MovingAverageTransform(windowSize=5). Run the pipeline and for each record print: value, derivative (4 decimals), windowStddev (4 decimals), rollingAvg (4 decimals).
+
+4. Verify compositional correctness: all fields added by previous stages must survive through all subsequent stages. That is, the final records must have: "sensorId", "timestamp", "value", "unit", "derivative", "windowStddev", and "rollingAvg". Use `assert all(key in record for key in required_keys)` to verify.
+
+5. Write a function called `filterByDerivativeThreshold` that accepts a stream and a `maxRate` float and yields only records where `abs(record["derivative"]) <= maxRate`. This simulates filtering out rapid changes that might indicate sensor malfunction. Test it by inserting it after `DerivativeTransform` in the pipeline and observing how many high-derivative records are filtered.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Build a Multi-Source Fan-In Coordinator
+===============================================================
+
+Combine data from multiple sources into a single unified pipeline.
+
+Requirements:
+
+1. Write a function called `mergeSources` that accepts a list of Source instances and yields records from all of them in a round-robin interleaved fashion. For each iteration step, advance one record from each source that still has records. When a source is exhausted, remove it from the active list. Stop when all sources are exhausted. The function should be a generator.
+
+2. Create a class called `RoundRobinMerge` that wraps `mergeSources` in the Source protocol interface — it accepts a list of sources in its constructor and implements `stream()` that calls `mergeSources`. Verify that `RoundRobinMerge` can be passed to `buildPipeline` exactly as a regular source would be.
+
+3. Create three synthetic sources: "TEMP_01" (mean=50, stddev=5, 15 records), "PRESSURE_01" (mean=101.325, stddev=2.0, 15 records, unit="kPa"), "HUMIDITY_01" (mean=60, stddev=15, 15 records, unit="%RH"). Each source generates readings at different scales.
+
+4. Merge all three using `RoundRobinMerge`. Run through a single `ConsoleSink`. Verify that the output interleaves records from all three sources — you should see alternating sensorIds in the output.
+
+5. Add a normalization stage that uses per-sensor min/max bounds stored in a dictionary: `sensorBounds = {"TEMP_01": (30, 70), "PRESSURE_01": (95, 110), "HUMIDITY_01": (20, 90)}`. Write a `PerSensorNormalizer` stage that looks up the bounds for each record's sensorId and normalizes accordingly. This demonstrates that pipeline stages can carry complex configuration.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Full Pipeline with Configuration and Verification
+===============================================================
+
+Assemble and validate a complete end-to-end pipeline with all components.
+
+Requirements:
+
+1. Create a configuration dictionary (plain Python dict) that specifies the full pipeline: which source to use, which stages with their parameters, and which sinks with their parameters. The config should look like: `{"source": {"type": "synthetic", "sensorId": "TEST_01", "numRecords": 50, "mean": 45.0, "stddev": 12.0}, "stages": [{"type": "threshold", "min": 20.0, "max": 80.0}, {"type": "normalize", "min": 20.0, "max": 80.0}, {"type": "movingAverage", "windowSize": 5}], "sinks": [{"type": "console"}, {"type": "json", "path": "output.json"}]}`.
+
+2. Write a factory function called `buildFromConfig(config)` that reads this dictionary and constructs the appropriate Source, Stage list, and Sink list. Use `if/elif` chains to map "type" strings to classes. Return the assembled pipeline as a tuple: `(source, stages, sinks)`.
+
+3. Assemble the pipeline using `buildPipeline(source, stages)`, then consume it with `MultiSink(sinks).consume(pipeline)`.
+
+4. Write a verification function called `verifyOutputFile(jsonPath, expectedFields)` that opens the JSON file, parses each line, and verifies that every record contains all expected fields. Print "PASS" if all records are valid or list the first failing record if not.
+
+5. Run the full pipeline, verify the output file using `verifyOutputFile`, and print a final summary: number of records consumed, number of alerts triggered (if ThresholdAlertSink is included), and the average value of the "rollingAvg" field across all records in the output file.
+
+No solutions provided.

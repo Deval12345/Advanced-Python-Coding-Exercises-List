@@ -1,0 +1,81 @@
+Homework — Lecture 24: High-Level Concurrency APIs
+
+===============================================================
+EXERCISE 1 — Rate-Limited Web Crawler with asyncio.Semaphore
+===============================================================
+
+Build an async web crawler that respects rate limits using asyncio.Semaphore.
+
+Requirements:
+
+1. Install `httpx` (pip install httpx[asyncio]). Write an async coroutine called `fetchUrl` that accepts a `semaphore` (asyncio.Semaphore), a `session` (httpx.AsyncClient), and a `url` (string). It must enter the semaphore using `async with semaphore:`, perform a GET request with a 5-second timeout, and return a dictionary with "url", "statusCode", "contentLength" (number of bytes in the response body), and "elapsed" (time the request took in seconds, using `time.perf_counter`). If any exception occurs, return a dictionary with "url" and "error" containing the exception message.
+
+2. Write an async coroutine called `crawlWithRateLimit` that accepts a list of URLs and a `maxConcurrent` integer. Create a single semaphore with `maxConcurrent` as its limit. Create a single `httpx.AsyncClient` using `async with`. Use `asyncio.gather` to fetch all URLs concurrently, passing the same semaphore instance to every `fetchUrl` call.
+
+3. Write a main coroutine that crawls at least 12 URLs from `https://jsonplaceholder.typicode.com` — for example, `/posts/1` through `/posts/12`. Run the crawler twice: once with `maxConcurrent=2` and once with `maxConcurrent=6`. Print all results and the total elapsed time for each run.
+
+4. Measurable requirement: with `maxConcurrent=2`, the crawler should process URLs in batches of two. With `maxConcurrent=6`, batches of six. The elapsed time ratio between the two runs should be approximately 3:1 (since 12 URLs / 2 = 6 batches vs 12 / 6 = 2 batches).
+
+5. Add a "requests per second" metric: count how many requests completed per second in each run. Print this alongside elapsed time to show the throughput difference.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Multi-Region DNS Resolver with asyncio.wait Race Pattern
+===============================================================
+
+Simulate a multi-region query race using asyncio.wait and FIRST_COMPLETED.
+
+Requirements:
+
+1. Write an async coroutine called `queryDnsServer` that accepts a `serverName` (string) and a `basePropagationMs` (int, milliseconds). It should simulate DNS lookup latency by awaiting `asyncio.sleep(basePropagationMs / 1000 + random.uniform(0, 0.2))`. It must return a dictionary with "server" (the server name), "resolved" (a fake IP formatted as "10.{serverIndex}.0.1"), and "latencyMs" (the actual elapsed time in milliseconds).
+
+2. Write an async coroutine called `resolveWithRace` that accepts a hostname (string) and a list of tuples of the form (serverName, basePropagationMs). For each tuple, create a Task using `asyncio.create_task`. Use `asyncio.wait` with `return_when=asyncio.FIRST_COMPLETED` to get the fastest response. Cancel all pending tasks. Drain the cancellations using `asyncio.gather`. Return the result from the winning task.
+
+3. Write a main coroutine that defines five DNS servers with different propagation characteristics: "primary" at 80ms, "secondary" at 120ms, "backup-us" at 150ms, "backup-eu" at 200ms, "backup-ap" at 250ms. Run `resolveWithRace` ten times for a fake hostname "api.example.com" and collect the winner name each time. Print which server won each race and a final tally showing how many times each server won. Due to random jitter, the distribution should not be completely dominated by the primary server.
+
+4. Add a "timeout race" variant: run the same five servers but with `asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED, timeout=0.1)`. If the timeout fires before any server responds, return a "timeout" result. Test with base delays where some servers will definitely time out.
+
+5. Measurable requirement: without the timeout, the average race should complete in approximately the fastest server's base latency plus jitter. With the timeout, at least some runs should return timeout results. Print elapsed time per race and confirm.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Async Data Pipeline with asyncio.Queue and Backpressure
+===============================================================
+
+Build a multi-stage streaming data processing pipeline using asyncio.Queue.
+
+Requirements:
+
+1. Write an async coroutine called `sensorIngester` that simulates reading from a sensor feed. It should generate 20 readings. Each reading is a dictionary with "sensorId" (a string like "SENSOR_A" or "SENSOR_B"), "timestamp" (from `time.time()`), "rawValue" (a float from `random.uniform(0, 100)`), and "readingId" (an incrementing integer). It should put each reading into a `rawQueue` and await `asyncio.sleep(0.03)` between readings. After all readings, put a `None` sentinel.
+
+2. Write an async coroutine called `dataFilter` that reads from `rawQueue` and writes to `filteredQueue`. It should only pass through readings where `rawValue > 30.0`. For readings that pass, print a "PASS" message; for those that fail, print a "DROP" message. Implement the sentinel re-put pattern for shutdown. The filter should await `asyncio.sleep(0.02)` per item to simulate processing time.
+
+3. Write an async coroutine called `aggregator` that reads from `filteredQueue` and writes final results to a `results` list. For each item, it computes `normalizedValue = (rawValue - 30.0) / 70.0` and appends a dictionary with "readingId", "sensorId", "normalizedValue" (rounded to 3 decimal places), and "processedAt" (timestamp). It should implement the sentinel pattern and await `asyncio.sleep(0.04)` per item.
+
+4. Write a main coroutine that creates `rawQueue = asyncio.Queue(maxsize=8)` and `filteredQueue = asyncio.Queue(maxsize=5)`. Run `sensorIngester`, `dataFilter`, and `aggregator` concurrently using `asyncio.gather`. After all complete, print all results in the `results` list.
+
+5. Measurable requirement: the pipeline should demonstrate backpressure — when the `aggregator` is slower than the filter, `filteredQueue` will fill and the filter will block waiting for space. Print the queue sizes at start and end. Verify that the number of results equals the number of readings where `rawValue > 30.0`.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Startup Coordinator Using asyncio.Event
+===============================================================
+
+Build a multi-service startup coordinator where workers wait for initialization to complete.
+
+Requirements:
+
+1. Write an async coroutine called `configLoader` that accepts an `asyncio.Event` called `configReady` and a `loadDurationSeconds` (float). It should simulate loading configuration by awaiting `asyncio.sleep(loadDurationSeconds)`, then set the event using `configReady.set()`. Print a timestamped "Configuration loaded" message before setting the event.
+
+2. Write an async coroutine called `serviceWorker` that accepts a `workerId` (int), an `asyncio.Event` called `configReady`, and a `workDurationSeconds` (float). It should print a timestamped "Worker N: waiting for config" message, then `await configReady.wait()`. After the event is set, print "Worker N: config received, starting work". Simulate work by awaiting `asyncio.sleep(workDurationSeconds)`. Return a string formatted as "Worker N completed".
+
+3. Write a main coroutine that creates a single `asyncio.Event`. Launch `configLoader` with a 1.5-second load time and launch six `serviceWorker` coroutines with varying work durations (0.3 to 0.8 seconds) all concurrently using `asyncio.gather`. Use `time.perf_counter` to measure total elapsed time.
+
+4. Expected behavior: all six workers should print their "waiting for config" messages almost immediately. After 1.5 seconds, all six should simultaneously print "config received, starting work" (within milliseconds of each other). Workers then complete independently based on their individual durations.
+
+5. Add a second experiment: launch three additional workers AFTER the event is already set (use `asyncio.create_task` after a delay). These late-arriving workers should receive the event immediately without waiting, because `asyncio.Event.wait()` on an already-set event returns immediately. Print timestamped evidence of this behavior.
+
+No solutions provided.
