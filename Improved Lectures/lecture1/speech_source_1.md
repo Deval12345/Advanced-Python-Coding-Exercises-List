@@ -1,10 +1,16 @@
 ### CONCEPT 1.1
 
-Welcome to Advanced Python. Before we write a single line of code, I want you to think about something. What separates a Python developer who builds production systems at Google, or architects data pipelines at a hedge fund, from someone who just knows the syntax? It is not knowing more libraries. It is not memorizing more functions. It is understanding the machine underneath. The Python Data Model. The protocol that makes Python, Python.
+Welcome to the lecture on the Data Model.
 
-In this course, we are going to take apart the engine. We are going to understand why Python works the way it does, and once you understand that, you will write code that is not just correct, it is elegant, it is fast, and it plugs into every framework and library without friction.
+Before we write a single line of code, I want you to think about something. What separates a Python developer who builds production systems at Google, or architects data pipelines at a hedge fund, from someone who just knows the syntax?
 
-Here is a promise. By the end of this course, you will look at Python code differently. You will see the invisible architecture that most developers never notice. And that is what makes you dangerous in a technical interview, or on a production team.
+It is not knowing more libraries.
+It is not memorizing more functions.
+
+It is understanding the machine underneath.
+
+At the core of Python is the Data Model.
+Master it, and you master the language.
 
 Let us begin.
 
