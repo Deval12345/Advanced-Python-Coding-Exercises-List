@@ -6,7 +6,7 @@ But here is what we did not do. We never combined them. We treated each method l
 
 Today we are going to take those individual methods and weave them together into a complete, native-feeling container. And then we are going to push further into operator overloading, where your objects start responding to plus signs, print statements, and equality checks. By the end of this lecture, you will be able to build objects that feel as natural to use as a Python list or dictionary, and you will understand why that matters in real production systems.
 
-Let us start with the big picture. In Lecture 1, we saw each special method in isolation. But in real systems, you rarely need just one. Think about an e-commerce platform. You have an inventory system holding thousands of products. You need to know how many products you have. You need to look up a product by its position or identifier. You need to loop through all products. And you need to check whether a specific product exists in inventory.
+Let us start with the big picture. In last Lecture, we saw each special method in isolation. But in real systems, you rarely need just one. Think about an e-commerce platform. You have an inventory system holding thousands of products. You need to know how many products you have. You need to look up a product by its position or identifier. You need to loop through all products. And you need to check whether a specific product exists in inventory.
 
 That is not one special method. That is four of them working together. When a class implements the special dunder method len, the special dunder method getitem, the special dunder method iter, and the special dunder method contains, it becomes a complete container. Python treats it like a first class citizen.
 
