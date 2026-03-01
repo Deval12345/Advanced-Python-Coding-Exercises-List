@@ -54,7 +54,7 @@ Why does this matter? Because in performance critical applications, this differe
 
 For your custom objects, Python does call special dunder method len through normal dispatch. But the key insight is this. The consistent interface, calling len of x rather than x dot length or x dot size or x dot count, means that every function and library that uses len will work with your objects too. You get the clean interface. Built in types get the speed optimization. Everyone wins.
 
-Let us close with one of the most important ideas in Python, and one that separates Python from languages like Java or C plus plus. Duck typing.
+Let us close with one of the most important ideas in Python, and one that separates Python from languages like Java or Cplusplus. Duck typing.
 
 The name comes from the old saying. If it walks like a duck and quacks like a duck, then it is a duck. In Python terms, this means we do not care what type an object is. We care what it can do. We care about its behavior, not its inheritance tree.
 
