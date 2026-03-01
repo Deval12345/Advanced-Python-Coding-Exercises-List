@@ -24,7 +24,7 @@ A custom container gives you all of that. The special dunder method len tells th
 
 Without this, you end up writing validation logic scattered across fifty different modules, each one checking the same rules independently. With a custom container, the rules live in one place.
 
-Now let us shift to operator overloading. We touched on this briefly in Lecture 1, but today we go deeper.
+Now let us shift to operator overloading. We touched on this briefly in last Lecture, but today we go deeper.
 
 Operator overloading means giving your custom objects the ability to respond to Python operators, the plus sign, the equality check, the print function. The mechanism is the same as before. Python sees an operator, and it translates that into a special method call.
 
@@ -50,6 +50,6 @@ Let us combine everything from today. We will build a feature store for a machin
 
 This is the complete picture. Container behavior plus operator overloading. The feature store is iterable, indexable, searchable, and combinable. It works seamlessly with every Python construct that expects a collection, while enforcing domain rules internally.
 
-Let us recap what we covered today. We took the individual special methods from Lecture 1 and combined them to build complete custom containers. We saw why this matters in real systems, from e-commerce inventory to financial transaction batches to machine learning feature stores. We explored operator overloading with the special dunder method add, the special dunder method repr, and the special dunder method str. And we discussed responsible overloading, the idea that operators should only be used when their meaning is immediately obvious.
+Let us recap what we covered today. We took the individual special methods from last Lecture and combined them to build complete custom containers. We saw why this matters in real systems, from e-commerce inventory to financial transaction batches to machine learning feature stores. We explored operator overloading with the special dunder method add, the special dunder method repr, and the special dunder method str. And we discussed responsible overloading, the idea that operators should only be used when their meaning is immediately obvious.
 
 In the next lecture, we will look at how Python formalizes these behavioral expectations through protocols, how duck typing scales to larger systems, and how informal interfaces keep Python flexible without sacrificing clarity.
