@@ -1,0 +1,83 @@
+Homework: Closures and Lambda Functions
+
+---
+
+Exercise 1: Configurable Logger Factory
+
+Build a function named makeLogger that accepts two parameters: a prefix string and a logLevel string.
+Inside makeLogger, define an inner function named logMessage that accepts a single parameter named message.
+The logMessage function should print a formatted string in the form: [logLevel] prefix: message.
+makeLogger should return logMessage.
+
+Create three loggers using makeLogger:
+- One with prefix "PaymentService" and logLevel "INFO"
+- One with prefix "AuthService" and logLevel "WARNING"
+- One with prefix "DatabaseService" and logLevel "ERROR"
+
+Call each logger with at least two different messages and verify the output matches the expected format.
+Each logger must independently remember its own prefix and logLevel across multiple calls.
+
+Bonus: Extend logMessage to also capture and print a timestamp from when makeLogger was called (hint: use a variable in the outer scope to store the creation time).
+
+---
+
+Exercise 2: Rate Limiter Using Closures with nonlocal
+
+Build a function named makeRateLimiter that accepts a parameter named maxCallsPerWindow.
+Inside, define a variable named callCount set to zero.
+Define an inner function named checkLimit that uses nonlocal on callCount.
+checkLimit should increment callCount by one on each call.
+If callCount exceeds maxCallsPerWindow, checkLimit should return False and print a warning message.
+Otherwise it should return True.
+makeRateLimiter should return checkLimit.
+
+Create two rate limiters: one with a maxCallsPerWindow of 3 and one with a maxCallsPerWindow of 5.
+Call each limiter several times beyond its limit and verify the correct True or False output.
+
+Bonus: Add a second inner function named resetLimit that resets callCount to zero, and return both checkLimit and resetLimit as a tuple from makeRateLimiter.
+
+---
+
+Exercise 3: Sort and Filter a Dataset Using Lambda
+
+You are given the following list of employee records:
+
+employeeList = [
+    {"name": "Alice",   "department": "Engineering", "salary": 95000},
+    {"name": "Bob",     "department": "Marketing",   "salary": 62000},
+    {"name": "Carol",   "department": "Engineering", "salary": 110000},
+    {"name": "David",   "department": "HR",          "salary": 58000},
+    {"name": "Eve",     "department": "Marketing",   "salary": 74000},
+    {"name": "Frank",   "department": "Engineering", "salary": 88000},
+]
+
+Using only lambda functions (no separate def definitions), complete the following:
+
+Part A: Sort employeeList by salary in ascending order.
+Part B: Sort employeeList by salary in descending order.
+Part C: Filter the list to only include employees in the Engineering department.
+Part D: Filter the list to only include employees with a salary above 80000.
+Part E: Use map to produce a new list of strings in the format "name: salary" for every employee.
+Part F: Sort the Engineering employees from Part C by salary in descending order.
+
+Print the result of each part clearly labelled.
+
+---
+
+Exercise 4: Closure vs Class Comparison
+
+Choose one of the following stateful behaviors and implement it twice: once as a closure and once as a class.
+
+Option A — Moving Average Tracker:
+Each call receives a new number. The function or method returns the running average of all numbers received so far.
+
+Option B — High Score Tracker:
+Each call receives a score. The function or method returns the current high score (the maximum seen so far).
+
+Option C — Inventory Counter:
+Each call receives a quantity to add or subtract. The function or method returns the current inventory level, and raises an error if the level would go below zero.
+
+For both your closure and class implementations:
+- Demonstrate the behavior with at least five calls.
+- Print the result of each call.
+- Write a short comment (two to four sentences) explaining when you would choose the closure approach versus the class approach for this specific behavior.

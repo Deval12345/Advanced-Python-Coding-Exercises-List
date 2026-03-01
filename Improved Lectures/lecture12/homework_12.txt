@@ -1,0 +1,50 @@
+Lecture 12 Homework — Exception Model & EAFP
+
+---
+
+Exercise 1 — EAFP Dictionary Accessor
+
+Write a function called safeGetNested that retrieves a value from a deeply nested dictionary using a list of keys. For example, safeGetNested(data, ["user", "address", "city"]) should navigate three levels deep and return the city value. If any key along the path is missing, return a default value that the caller provides. If any value along the path is not a dictionary when a further key is expected, return the default value as well. Write a second version called safeLBYL that solves the same problem using LBYL — checking key membership with "in" at each level before accessing. Then write a test function that calls both versions on the same inputs and confirms they produce identical results.
+
+Requirements:
+- safeGetNested must use EAFP — a try block with KeyError and TypeError caught
+- safeLBYL must use LBYL — explicit "in" checks and isinstance checks at each step
+- The default parameter must have a sensible default of its own (use None)
+- Test with at least three cases: a fully valid path, a path where a middle key is missing, and a path where a value along the chain is not a dictionary
+- Add a comment to your code identifying which approach is shorter and which is more correct for concurrent access
+
+
+Exercise 2 — Multi-Level Exception Handling for a CSV Parser
+
+Write a function called parseCSVRow that takes a list of raw string values from a CSV row and parses them into a typed record. The function expects exactly three fields in order: an integer id, a float price, and a non-empty string label. Return a dictionary with keys "id", "price", and "label" on success. Handle each of the following failure modes with a distinct except clause: IndexError if the row has fewer than three fields, ValueError if id or price cannot be converted to their expected numeric types, and a custom exception called EmptyLabelError (which you define) if the label field is an empty string or whitespace only. Return None for any failure. Write a loop that processes a list of at least six rows — some valid, some with each type of error — and prints the result of each call.
+
+Requirements:
+- Define EmptyLabelError as a subclass of ValueError
+- Each except clause must use "as" to bind the exception and print a message that identifies the row number and the failure type
+- The loop must pass the row index to the parser so error messages include the row number
+- Do not use a bare except or catch Exception directly
+- Demonstrate that EmptyLabelError is catchable both specifically (as EmptyLabelError) and broadly (as ValueError)
+
+
+Exercise 3 — Resource Manager with try/except/else/finally
+
+Simulate a log file writer that opens a file, writes records to it, and closes it. Write a function called writeLogBatch that accepts a filename and a list of records. Use the full four-clause try/except/else/finally pattern. In the try block, open the file and write each record. Deliberately raise a PermissionError if any record contains the string "FORBIDDEN" (simulating a write restriction). In the except PermissionError clause, print a message identifying which record triggered the restriction. In the else clause, print a success message reporting how many records were written. In the finally clause, ensure the file handle is closed if it was opened, and print a message confirming closure. Call the function twice: once with a clean batch of records that should succeed, and once with a batch that contains a FORBIDDEN record.
+
+Requirements:
+- Open the file inside the try block and assign the file handle to a variable initialized to None before the try
+- The finally clause must check whether the file handle is not None before calling close, to avoid an AttributeError if the open itself failed
+- The else clause must only run when no exception occurred — verify this by confirming the forbidden batch does not print the success message
+- Use real file I/O — write actual lines to a file named "batch_log.txt"
+- The function must be callable multiple times without leaving unclosed file handles
+
+
+Exercise 4 — Custom Exception Hierarchy for an Inventory System
+
+Design a three-level exception hierarchy for an inventory management system. The base class is InventoryError. Two subclasses are ItemNotFoundError (raised when a requested item SKU does not exist in the catalog) and StockError, which itself has two subclasses: OutOfStockError (raised when the item exists but quantity is zero) and InsufficientStockError (raised when the item exists and has some stock but not enough to fulfill the request). Each exception class must store structured attributes: ItemNotFoundError stores the sku that was requested; OutOfStockError stores the sku; InsufficientStockError stores the sku, the requested quantity, and the available quantity. Write a function called fulfillOrder that takes a catalog dictionary, a sku, and a quantity, and raises the appropriate exception. Write a calling block that tests all four outcomes (success, each of the three exception types) and handles each with a distinct except clause ordered most-specific first. Print a message from each handler that uses the structured attributes of the exception rather than just str(error).
+
+Requirements:
+- InsufficientStockError must subclass StockError, not InventoryError directly
+- All except clauses must be ordered most-specific first to ensure correct matching
+- Each exception's __init__ must call super().__init__ with a human-readable message
+- Verify that catching StockError also catches OutOfStockError and InsufficientStockError
+- Verify that catching InventoryError catches all three specific types

@@ -1,4 +1,6 @@
 
+Welcome back.
+
 In the previous session, we explored the Python Data Model and understood how Python syntax connects to special methods such as the special dunder method len, get item, iter, and add.
 
 We observed that objects participate in Python syntax by implementing specific methods, and that behavior matters more than inheritance.

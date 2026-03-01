@@ -1,0 +1,5 @@
+Homework: Multiprocessing and IPC
+
+1. Use multiprocessing.Pool to run a CPU-bound function (e.g. sum of sqrt(i) for i in range(n)) with 4 different n values; time sequential vs pool.map and show speedup.
+2. Implement a function that takes a list of numbers and returns the sum of their square roots; run it with Pool.map on 4 chunks of a large list and sum the results; compare time with single-process version.
+3. Real-world: Simulate a batch of image-processing tasks (e.g. each "task" is a heavy computation on a small payload); use Pool with 4 workers; measure total time and confirm it is roughly one-quarter of sequential time (on a 4-core machine).

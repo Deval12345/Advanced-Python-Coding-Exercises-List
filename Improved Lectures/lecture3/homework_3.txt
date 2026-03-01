@@ -1,0 +1,13 @@
+Homework: Protocols and Informal Interfaces
+
+Exercise 1: Build a File-Like Object for Logging
+Create a class named LogBuffer that implements the file-like protocol: write(data), read(), and close() methods. Instead of writing to disk, write() should append each entry to an internal list named logEntries with a timestamp. The read() method should return all entries joined as a single string. Pass your LogBuffer instance to Python's print() function using the file parameter and verify that log messages are captured in memory rather than printed to the terminal.
+
+Exercise 2: Implement the Sequence Protocol on a Custom Data Structure
+Create a class named TemperatureLog that stores a list of daily temperature readings in an attribute named readings. Implement the sequence protocol: special dunder method len returns the number of readings, and special dunder method getitem returns a reading by index and supports slicing. Verify that Python's built-in functions len(), min(), max(), and sorted() all work on your TemperatureLog without any modification. Write a short explanation of why these functions accept your object even though it is not a list.
+
+Exercise 3: Duck Typing Across Unrelated Classes
+Write a function named exportData that accepts a parameter named destination. The function should call destination.write() with a formatted string and destination.close() when done. Create two completely unrelated classes: one named CsvFileWriter that writes to a real file on disk, and one named ApiPayloadBuffer that stores the written content in an internal string attribute named payload. Both classes should have no shared parent class. Call exportData with an instance of each class and verify both work correctly. This exercise demonstrates that Python does not require inheritance for protocol compatibility.
+
+Exercise 4: Diagnose and Fix an Incomplete Protocol
+Start with a class named DataStream that implements special dunder method iter but not special dunder method next. Attempt to use it as an iterator directly by calling next() on an instance. Observe the AttributeError. Then fix the class by also implementing special dunder method next with a StopIteration guard, so that it correctly produces values one at a time. Write a comment in your code explaining the difference between an iterable (implements special dunder method iter) and an iterator (implements both special dunder method iter and special dunder method next).

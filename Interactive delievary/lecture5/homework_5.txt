@@ -1,0 +1,5 @@
+Homework: Functions as Objects
+
+1. Write a function apply_pipeline(value, steps) that takes an initial value and a list of single-argument functions, and returns the result of applying each function in order (each step receives the output of the previous).
+2. Build a small pricing module: define three fee functions (flat, percent, tiered), put them in a dictionary by name, and write checkout(amount, strategy_name) that looks up and calls the right one. Add a fourth strategy without changing checkout.
+3. Real-world: Implement a simple event handler registry. Register(name, handler) stores a callable under a string name; emit(name, *args) calls all handlers registered for that name with the given arguments. Use it to register two handlers for "order_placed" and emit one event.

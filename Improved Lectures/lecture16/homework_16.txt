@@ -1,0 +1,154 @@
+Homework — Lecture 16: Abstract Base Classes (ABCs) & collections.abc — Validated Duck Typing
+
+==============================================================================
+EXERCISE 1 — Build a Reporting Plugin System Using ABCs
+==============================================================================
+
+Scenario:
+You are building a reporting system that supports multiple output formats (PDF,
+HTML, CSV, JSON). Each format is a plugin. You want to guarantee at startup
+that every plugin implements the full required interface before any report
+generation begins.
+
+Requirements:
+1. Define an ABC called ReportPlugin with the following abstract methods:
+   - connect(self, destination): opens or initializes the output target
+     (e.g., opens a file, connects to a remote server)
+   - render(self, data, template): takes raw data and a template name and
+     produces the formatted output string or bytes
+   - write(self, content, destination): writes the rendered content to the
+     destination
+   - close(self, destination): releases any resources held for the destination
+2. Add a concrete template method called generate(self, data, template,
+   destination) that calls connect, render, write, and close in the correct
+   order. This method must NOT be abstract.
+3. Implement two concrete plugin classes:
+   - HtmlReportPlugin: simulates HTML generation (print statements are fine
+     to simulate IO)
+   - CsvReportPlugin: simulates CSV generation
+4. Implement a third class called BrokenPlugin that inherits from ReportPlugin
+   but intentionally omits at least one abstract method.
+5. In your main block, demonstrate:
+   - HtmlReportPlugin and CsvReportPlugin can be instantiated and their
+     generate method runs correctly
+   - Attempting to instantiate BrokenPlugin raises TypeError and print the
+     error message to show which method is missing
+
+Expected learning: You see the full template method pattern in action across
+multiple concrete implementations, and you observe the TypeError at
+instantiation for the broken plugin rather than at the point where the missing
+method would have been called.
+
+==============================================================================
+EXERCISE 2 — Implement a Custom Sequence Using collections.abc.Sequence
+==============================================================================
+
+Scenario:
+You are building a TimeSeries class to hold a fixed sequence of timestamped
+float readings (e.g., sensor data). Once created, the sequence is immutable.
+You want it to behave like a proper Python sequence so it works with any
+standard library function that accepts sequences.
+
+Requirements:
+1. Import Sequence from collections.abc.
+2. Define TimeSeries inheriting from Sequence. Its __init__ should accept a
+   list of (timestamp, value) tuples and store them internally.
+3. Implement only the two required abstract methods:
+   - __getitem__(self, index): support both integer indexing and slicing
+   - __len__(self): return the number of readings
+4. Do NOT implement any other methods yourself.
+5. After defining the class, demonstrate that the following all work without
+   you having written them — they come free from the Sequence mixin:
+   - Iteration with a for loop
+   - The in operator (__contains__)
+   - index(value) to find the position of a reading
+   - count(value) to count occurrences of a reading
+   - Reversed iteration with reversed()
+6. Print isinstance(ts, Sequence) and confirm it is True.
+
+Expected learning: You understand exactly how much functionality the
+collections.abc mixin provides from a minimal two-method implementation, and
+you see that isinstance correctly recognizes your custom class as a Sequence.
+
+==============================================================================
+EXERCISE 3 — Integrate a Legacy Class via ABC.register()
+==============================================================================
+
+Scenario:
+Your team has an existing codebase with a class called DatabaseRow that was
+written two years ago. It already implements to_dict() and from_dict(data)
+methods. You are now introducing a new Exportable ABC that your data pipeline
+checks with isinstance before processing. You need DatabaseRow to pass that
+check without modifying its source code.
+
+Requirements:
+1. Define an ABC called Exportable with two abstract methods:
+   - to_dict(self): returns a dictionary representation of the object
+   - from_dict(self, data): populates the object from a dictionary
+2. Define DatabaseRow as a plain class (no ABC inheritance) with realistic
+   implementations of to_dict and from_dict. Give it a few instance attributes
+   (e.g., id, name, created_at) to make the implementations meaningful.
+3. Register DatabaseRow with Exportable using Exportable.register(DatabaseRow).
+4. Instantiate a DatabaseRow and demonstrate:
+   - isinstance(row, Exportable) returns True
+   - issubclass(DatabaseRow, Exportable) returns True
+   - to_dict() and from_dict() work correctly
+5. Now define a second class called EmptyLegacyClass (plain class, no
+   inheritance) that has no methods at all. Register it with Exportable.
+   Demonstrate that isinstance and issubclass return True even though
+   EmptyLegacyClass does not implement to_dict or from_dict. Print a comment
+   in your output explaining why this is dangerous and when register() should
+   be used responsibly.
+
+Expected learning: You understand the power and the risk of virtual
+subclassing. register() changes isinstance behavior without any enforcement,
+so it requires the developer to manually verify the registered class meets
+the contract.
+
+==============================================================================
+EXERCISE 4 — Early Failure vs. Late Failure: Observing the Difference
+==============================================================================
+
+Scenario:
+You are running a data ingestion service. Each ingestion job runs for several
+hours processing large files. A plugin is responsible for validation, and it
+is supposed to implement a validate(self, record) method. You want to
+demonstrate the concrete difference in failure timing between a system that
+uses ABCs and one that uses plain duck typing.
+
+Requirements:
+1. PART A — Late failure with plain duck typing:
+   - Define a plain base class (no ABC) called BaseValidator with a
+     run_job(self, records) method that iterates over records and calls
+     self.validate(record) for each one. Add a simulated delay using a loop
+     or counter so you can see that processing happens before the failure.
+   - Define BrokenValidator that inherits from BaseValidator but does NOT
+     implement validate.
+   - Instantiate BrokenValidator successfully (no error yet).
+   - Call run_job with a list of 5 records. Use a counter to print which
+     record number is being processed. The AttributeError will surface only
+     when validate is first called — inside the job, after some records have
+     already been processed. Catch the AttributeError and print a message
+     showing how many records were processed before failure.
+
+2. PART B — Early failure with ABC:
+   - Redefine BaseValidator as an ABC with validate as an abstract method.
+     Keep run_job as a concrete template method.
+   - Redefine BrokenValidator to inherit from this new ABC but still omit
+     validate.
+   - Wrap BrokenValidator() in a try/except TypeError block. Print the
+     TypeError message. Note that zero records were processed — the error
+     happened before the job even started.
+
+3. Write a summary comment in your code (or print it to stdout) comparing
+   the two approaches:
+   - How many records were processed before the failure in Part A?
+   - How many in Part B?
+   - What is the cost of late failure in a real system where each record
+     represents minutes of processing time?
+
+Expected learning: The contrast between Part A and Part B makes the value of
+ABCs viscerally clear. Early failure at instantiation is not just a style
+preference — it is a correctness and operational reliability decision.
+
+==============================================================================

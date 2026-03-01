@@ -1,0 +1,5 @@
+Homework: Iterators, Iterables, Generators
+
+1. Implement a class RangeLike that takes start, stop, step and is iterable (__iter__ returns an iterator that yields start, start+step, ... until stop); do not use built-in range in __iter__, implement the iterator yourself.
+2. Write a generator function read_lines(path) that opens the file and yields one stripped line at a time; use "with open" so the file is closed.
+3. Real-world: Build a generator that yields (timestamp, value) pairs from a CSV file with columns "time" and "value"; yield one row at a time; assume the file has a header row to skip.

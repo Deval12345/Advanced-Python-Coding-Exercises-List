@@ -1,0 +1,66 @@
+Homework: Context Managers
+
+---
+
+Exercise 1 — DatabaseSession with Connection Pool Simulation
+
+Write a class called DatabaseSession that simulates connection pool management using a context manager. The class should accept a poolSize parameter at construction time representing the total number of available connections. Each time a session is entered with the with statement, it should check whether a connection is available in the pool. If none are available, raise a RuntimeError with a descriptive message. If one is available, decrement the pool count, print a message showing how many connections remain, and return self. When the session exits, always return the connection to the pool by incrementing the count, and print a confirmation message.
+
+Test your implementation by entering three sessions simultaneously using nested with blocks where poolSize is 2, verifying that the third entry raises RuntimeError. Then verify that after a session exits, a new session can be entered successfully.
+
+Requirements:
+- Accept poolSize as a constructor argument; store it as an instance attribute
+- Raise RuntimeError in __enter__ when the pool is exhausted, before decrementing
+- Always increment the pool count in __exit__ regardless of whether an exception occurred
+- Return False from __exit__ so exceptions propagate normally
+- Print the remaining connection count each time a connection is acquired and released
+- Test both the exhaustion case and the recovery case after a session closes
+
+
+Exercise 2 — FileProcessor with Atomic Writes
+
+Write a class called FileProcessor that implements atomic file writing using a context manager. An atomic write means: write to a temporary file first, then rename it to the final destination only after the write succeeds. If an exception occurs during writing, the temporary file is deleted and the original file is left unchanged.
+
+The class should accept a targetPath parameter representing the final file destination. In __enter__, open a temporary file in the same directory as targetPath (use a name like targetPath + ".tmp"), store the file handle as an instance attribute, and return the file handle so the caller can write to it. In __exit__, if no exception occurred, close the file handle and rename the temporary file to targetPath. If an exception occurred, close the file handle and delete the temporary file, then return False so the exception propagates.
+
+Test by writing valid content in one with block and verifying the target file exists afterward. Then test by raising an exception inside a with block and verifying that the target file was not modified and no temporary file remains.
+
+Requirements:
+- Use os.rename to perform the atomic replacement from temp file to target path
+- Use os.remove to delete the temp file on failure
+- Always close the file handle in __exit__ before renaming or deleting
+- Return False from __exit__ in both the success and failure paths
+- Check exceptionType to determine which branch to take in __exit__
+- Print a message indicating whether the write was committed or rolled back
+
+
+Exercise 3 — Timeout Context Manager Using Threading
+
+Write a class called Timeout that raises a TimeoutError if the code inside the with block takes longer than a specified number of seconds. The class should accept a seconds parameter. Use a threading.Timer to schedule a function that raises TimeoutError after the timeout period. In __enter__, start the timer and return self. In __exit__, always cancel the timer to prevent it from firing after the block has already completed successfully.
+
+Because Python threads cannot directly raise exceptions in other threads, use a shared flag instead: set a boolean attribute timed_out to True in the timer callback, and have the with block periodically check this flag if needed. Alternatively, implement the timeout using threading.Event: set the event in the timer callback, and in a wrapper loop check whether the event is set before each iteration step.
+
+For simplicity, demonstrate the timeout by running a loop inside the with block that checks a shared stop flag set by the timer. When the timer fires it sets the flag; the loop exits and raises TimeoutError. Show one case where the block finishes before the timeout and one case where the block is interrupted.
+
+Requirements:
+- Use threading.Timer to schedule the timeout callback
+- Always call timer.cancel() in __exit__ to clean up when the block finishes on time
+- Return False from __exit__ so any raised TimeoutError propagates to the caller
+- Print a message in __enter__ when the timer starts and in __exit__ when it is cancelled
+- Test with a block that completes well within the timeout and one that exceeds it
+
+
+Exercise 4 — @contextmanager Version of a Managed Resource
+
+Rewrite Exercise 1's DatabaseSession as a generator function called managedDatabaseSession using the @contextmanager decorator from contextlib instead of a class. The function should accept poolSize as a parameter. Before the yield, check whether a connection is available. If not, raise RuntimeError. If one is available, decrement the pool count, print the remaining count, and yield a connection identifier string such as "Session-1". In the finally block after the yield, always return the connection to the pool by incrementing the count and printing a confirmation.
+
+After implementing managedDatabaseSession, write a second generator function called stackedResources that uses two nested with statements — one for managedDatabaseSession and one for a managedTransaction (from the lecture example) — to demonstrate that @contextmanager-based managers compose correctly with each other.
+
+Requirements:
+- Use @contextmanager from contextlib
+- Use try/yield/finally so the finally block always executes
+- The poolSize state must persist across multiple calls; use a mutable container like a list or a simple class to hold the count, since a plain integer variable cannot be mutated from inside a nested function
+- Raise RuntimeError before the yield if the pool is exhausted
+- Test entering two sessions simultaneously from the same pool and verify the count decrements and increments correctly
+- Demonstrate nesting with at least one other context manager inside the with block
+

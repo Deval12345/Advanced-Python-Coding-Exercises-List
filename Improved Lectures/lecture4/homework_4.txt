@@ -1,0 +1,51 @@
+Homework: Protocols and Behavior-Driven Design
+
+Exercise 1: Data Processing Pipeline with Protocol-Compatible Stages
+
+Build a multi-stage data processing pipeline using protocol-compatible components. Each stage must define a method named process that accepts a single data argument and returns transformed data.
+
+Create at least three stage classes:
+- A stage that strips and lowercases a string
+- A stage that replaces all spaces with underscores
+- A stage that counts the number of words and returns a dictionary with the original text and the count
+
+Write a function named runPipeline that accepts a list of stage objects and an initial string, runs the data through each stage in order, and returns the final result. Confirm that none of your stage classes share a base class. They are compatible only because they each define process.
+
+Exercise 2: Plugin-Based Notification System Using Protocols
+
+Implement a notification system where each notifier is a plugin — a class that provides a method named send accepting a single message string.
+
+Create three notifier classes:
+- ConsoleNotifier: prints the message with a prefix of CONSOLE
+- EmailNotifier: prints a simulated email with a subject line and body
+- WebhookNotifier: prints a simulated HTTP POST payload formatted as a dictionary
+
+Write a function named notify that accepts a notifier object and a message string and calls send on it. Then write a function named broadcastAll that accepts a list of notifiers and a message and calls notify for each one.
+
+Demonstrate that a fourth notifier from a hypothetical external library — one that already has its own base class — can be integrated simply by defining a send method, without any modification to notify or broadcastAll.
+
+Exercise 3: Strategy Pattern for a Tax Calculator
+
+Design a tax calculation system using the strategy pattern without any base class or inheritance.
+
+Create three strategy classes:
+- StandardTax: applies a 10 percent rate
+- ReducedTax: applies a 5 percent rate
+- ExemptTax: applies a 0 percent rate and returns the original amount unchanged
+
+Create a class named TaxEngine with the following:
+- A method named setStrategy that stores the current strategy
+- A method named computeTax that calls calculate on the active strategy and returns the result
+
+Write a short script that creates a TaxEngine, swaps between all three strategies for the same base amount, and prints each result. Confirm the engine does not need to be reconstructed when the strategy changes.
+
+Exercise 4: Identify Where Inheritance Breaks and Protocols Fix It
+
+Consider the following scenario: a team has built a logging system with a base class named BaseLogger and three subclasses — FileLogger, DatabaseLogger, and ConsoleLogger. A new requirement arrives to integrate a third-party CloudLogger that already inherits from a vendor-supplied RemoteHandler class.
+
+Write a short written response (as comments in a Python file) that answers the following:
+- What problems arise if you try to fit CloudLogger into the BaseLogger hierarchy?
+- What changes would be required to the existing system?
+- How would redesigning the system around a write protocol (instead of a base class) eliminate all three problems?
+
+Then write a minimal code example showing the protocol-based version of the logging system with four loggers, none of which share a base class, all of which work with a single dispatch function named sendLog.

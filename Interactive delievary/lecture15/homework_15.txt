@@ -1,0 +1,17 @@
+Capstone Project: Data Pipeline
+
+Build a small data pipeline that demonstrates:
+
+1. Data model: a custom class (e.g. Record) that supports len(), iteration, or indexing.
+2. Behavior as data: a validator or transformer that is a callable or strategy.
+3. Context manager: for pipeline run or file/resource handling.
+4. EAFP: use try/except when parsing or validating; log or skip bad rows.
+5. Iteration/generator: stream records (do not load entire file into a list).
+6. Optional: descriptor for a validated field; decorator for logging/timing; concurrency (threads or process pool) with a one-line comment explaining the choice.
+
+Deliverables:
+- One Python module (or small package) with the pipeline.
+- README listing which concepts you used and where (file/line or section).
+- Optional: tests or a script that runs the pipeline on sample data.
+
+Evaluation: correct and appropriate use of concepts, clarity, and a working pipeline that could be extended in a real project.

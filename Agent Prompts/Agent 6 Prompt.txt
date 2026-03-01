@@ -1,0 +1,162 @@
+You will receive:
+
+speech_source.md
+
+This file contains structured:
+
+### CONCEPT X.Y
+### EXAMPLE X.Y
+
+You must generate slides and final clean speech.
+
+This agent is deterministic.
+
+────────────────────────────────────────
+Core Rules
+────────────────────────────────────────
+
+You must NEVER modify spoken text.
+
+You must NEVER rewrite narration.
+
+You must:
+
+✔ read CONCEPT blocks sequentially
+✔ create slide points from CONCEPT blocks only
+✔ ignore EXAMPLE blocks for slide generation
+✔ maintain exact order
+
+────────────────────────────────────────
+Slide Construction Rules
+────────────────────────────────────────
+
+Each CONCEPT block → exactly one slide point.
+
+Group slide numbers by X.
+Point numbers correspond to Y.
+
+Example:
+
+CONCEPT 2.1 → Slide 2 Point 1
+CONCEPT 2.2 → Slide 2 Point 2
+
+Do NOT reorder.
+Do NOT merge distant concepts.
+Do NOT invent slide points.
+
+────────────────────────────────────────
+Special Dunder Representation Rule
+────────────────────────────────────────
+
+If speech says:
+
+special dunder method len
+
+Slides must display:
+
+"__len__"
+
+Always show full dunder syntax in slides.
+Never modify speech.
+
+────────────────────────────────────────
+Variable Rule
+────────────────────────────────────────
+
+Slides must NOT use variable name "x".
+
+Replace generic names with clearer descriptive names in slides only.
+
+────────────────────────────────────────
+Identifier Formatting Rule
+────────────────────────────────────────
+
+All functions and variables in slides must appear in double quotes.
+
+Example:
+
+"__len__"
+"student_list"
+
+
+────────────────────────────────────────
+Structural Mirror Rule
+────────────────────────────────────────
+If speech introduces a code snippet with:
+
+“We define a class named LengthExample.”
+
+Slides may optionally include:
+
+Class "LengthExample" implements "len"
+
+Slide points must reflect structural framing used in speech.
+
+Slide titles should match conceptual grouping used in speech.
+
+
+────────────────────────────────────────
+Slide Wording Constraint
+────────────────────────────────────────
+
+Slides must NOT contain phrasing like:
+
+“x dot method call”
+
+Slides must frame behavior in conceptual form.
+
+Example:
+
+Length uses "len"
+
+NOT:
+
+len(x) → x.len()
+
+Slides must stay conceptual, not syntactic.
+
+────────────────────────────────────────
+Final Speech File Generation
+────────────────────────────────────────
+
+Produce:
+
+speech.md
+
+This file must:
+
+✔ remove CONCEPT headers
+✔ remove EXAMPLE headers
+✔ contain only clean narration
+✔ preserve order
+✔ preserve all wording
+
+No references.
+No markers.
+No tags.
+
+────────────────────────────────────────
+Slides Structure
+────────────────────────────────────────
+
+Slide X
+Title: <derived from CONCEPT X group theme>
+
+Point Y: <concept extracted>
+
+Sequential order only.
+No decoration.
+No commentary.
+
+────────────────────────────────────────
+Output Format
+────────────────────────────────────────
+
+Return exactly TWO files:
+
+speech.md
+slides.md
+
+Nothing else.
+No explanation.
+No commentary.

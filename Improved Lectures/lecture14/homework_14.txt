@@ -1,0 +1,76 @@
+Homework: Descriptors Part 2 — Lazy Loading, Computed Properties, and Framework Patterns
+
+Exercise 1 — Build a Lazy Configuration Loader
+
+Write a non-data descriptor called LazyConfig that simulates lazy loading of an expensive configuration file. The descriptor should accept a filename parameter in its constructor. The first time the attribute is accessed on an instance, print a message saying "Loading config from <filename>..." and return a dictionary simulating parsed configuration (at minimum three key-value pairs). On all subsequent accesses, return the cached result without printing again.
+
+Apply it to a class called AppSettings with two LazyConfig descriptors: databaseConfig loading from "db.yaml" and cacheConfig loading from "cache.yaml".
+
+Requirements:
+- LazyConfig must be a non-data descriptor (only __get__, no __set__)
+- Use __set_name__ to store the attribute name
+- Write the result into instance.__dict__ inside __get__ so subsequent accesses hit the dict directly
+- Verify by accessing each config attribute twice and confirming the "Loading..." message appears only once per attribute
+- Do not use functools.cached_property — implement the mechanism yourself
+
+
+Exercise 2 — Computed vs Cached Properties in a Data Analysis Class
+
+Write a class called SalesReport that holds a list of sale amounts (floats) as instance state. Add:
+
+(a) A computed property called currentTotal that always returns the live sum of the sale amounts.
+(b) A cached property called expensiveStatistics that computes the mean, median, and standard deviation (use the statistics module). Print a message inside the function body to confirm it runs only once.
+
+Demonstrate:
+- Append a new sale amount to the list, then access currentTotal — it should reflect the change immediately.
+- Access expensiveStatistics three times — the computation message should appear only once.
+- Explain in a comment why using @property for expensiveStatistics would be wasteful and why using cached_property for currentTotal would cause stale bugs.
+
+Requirements:
+- Use @property for currentTotal
+- Use @functools.cached_property for expensiveStatistics
+- Import the statistics module for mean, median, and stdev
+
+
+Exercise 3 — ORM-Style Descriptor with Type and Range Validation
+
+Build a descriptor class called ValidatedField that enforces both a type check and an optional numeric range. The constructor accepts fieldType, minValue (optional, default None), and maxValue (optional, default None). __set__ must raise TypeError if the value's type is wrong and ValueError if the value is outside the specified range. Use __set_name__ to store the attribute name.
+
+Apply it to a class called SensorConfig with these fields:
+- sampleRate: must be an int between 1 and 1000
+- threshold: must be a float between 0.0 and 1.0
+- deviceName: must be a str with no range constraint
+
+Demonstrate:
+- Creating a valid SensorConfig instance with all three fields set
+- Attempting to set sampleRate to a float (wrong type) — expect TypeError
+- Attempting to set threshold to 1.5 (out of range) — expect ValueError
+- Accessing SensorConfig.sampleRate through the class and printing its type to confirm it returns the descriptor object
+
+Requirements:
+- ValidatedField must define both __get__ and __set__ (it is a data descriptor)
+- Use __set_name__ for automatic name binding
+- The instance-is-None check in __get__ must return self for class-level access
+
+
+Exercise 4 — Tracing the Full Lookup Priority Chain
+
+This exercise is about observation and understanding, not just writing code.
+
+Write a class called TraceDemo that has:
+- A data descriptor (define a simple DataDesc class with __get__ and __set__)
+- A non-data descriptor (define a simple NonDataDesc class with only __get__)
+- A plain instance attribute set in __init__ with the same name as the non-data descriptor
+
+For each of the three attributes, do the following:
+(a) Access it through an instance and print the result.
+(b) After accessing it, inspect instance.__dict__ and print its contents.
+(c) Add a comment explaining which step of the lookup priority chain answered each access.
+
+Then force the non-data descriptor to be shadowed by storing a value in instance.__dict__ under the same key, and verify that subsequent reads return the stored value, not the descriptor.
+
+Requirements:
+- All descriptor __get__ methods must print a message so you can trace which one is being called
+- Your comments must explicitly reference the four-step priority chain from the lecture
+- Use at least one real attribute name collision to demonstrate priority
+

@@ -1,0 +1,5 @@
+Homework: Decorators and Closures
+
+1. Write a decorator @trace that prints the function name and arguments before each call and the return value after.
+2. Implement @cache that memoizes the return value for a function of one argument (use a dict keyed by argument; assume hashable args).
+3. Real-world: Build @retry(max_attempts=3) that catches a specific exception, retries up to max_attempts times, and re-raises on final failure. Use a closure to track attempt count.

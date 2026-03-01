@@ -1,5 +1,0 @@
-
-1. Design a function that creates a per-request payment configuration without sharing mutable state.
-2. Write a small example where empty data and missing data must be handled differently.
-3. Demonstrate how a shallow copy can still leak changes through nested structures.
-4. Explain, in your own words, why merging different meanings into one condition leads to bugs.

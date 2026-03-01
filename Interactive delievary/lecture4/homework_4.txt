@@ -1,0 +1,5 @@
+Homework: Descriptors
+
+1. Implement a ReadOnlyDescriptor that allows setting a value only once (e.g. for immutable config set at startup). Raise an error on the second set.
+2. Build a CachedProperty descriptor that computes a value on first access and caches it on the instance. Use only __get__; do not use __set__.
+3. Real-world: Create a PercentField descriptor that accepts values between zero and one hundred, stores them as a float, and returns them as a percentage string when read (e.g. 0.85 → "85.0%"). Use it on a class Report with a field score.

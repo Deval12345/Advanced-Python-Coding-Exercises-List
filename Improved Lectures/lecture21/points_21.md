@@ -1,0 +1,21 @@
+# Key Points — Lecture 21: Async/Await Fundamentals — Cooperative Concurrency with a Single Thread
+
+---
+
+- **Coroutines are functions that can suspend execution mid-run.** An `async def` function returns a coroutine object when called; no code in its body runs until the event loop drives it. The `await` keyword is the suspension point — it hands control back to the event loop until the awaited operation completes, allowing other coroutines to run in the meantime.
+
+- **The async/await model solves the memory and scheduler scaling wall of thread-per-connection servers.** One OS thread consumes roughly one megabyte of stack space; ten thousand threads consume ten gigabytes before a single byte of application data is stored. A single-threaded event loop manages thousands of concurrent in-flight I/O operations by keeping coroutines suspended at their await points rather than blocking OS threads.
+
+- **asyncio.gather runs multiple coroutines concurrently and collects all their results.** All coroutines in the gather call start immediately; each suspends independently at its own await points. Total wall-clock time equals the duration of the longest coroutine, not the sum of all durations. Results are returned in argument order regardless of completion order, making it straightforward to correlate results with their sources.
+
+- **asyncio.create_task schedules a coroutine as an independent background task without suspending the calling coroutine.** Unlike passing a coroutine directly to await, create_task returns a Task object immediately and lets the current coroutine continue executing. Tasks are used for background health checks, metric flushers, periodic cleanup, and any work that should proceed in parallel with the main execution path.
+
+- **Task cancellation is delivered as CancelledError at the task's nearest suspension point.** Calling `task.cancel()` does not stop the task immediately; it schedules the exception for delivery at the next await inside the task. The correct cancellation pattern is to catch CancelledError, perform any necessary cleanup (closing resources, logging, rolling back partial work), and then re-raise the exception unconditionally. Swallowing CancelledError leaves the event loop with an inconsistent view of task state.
+
+- **async with implements the async context manager protocol using __aenter__ and __aexit__ as async methods.** When the block is entered, the event loop awaits __aenter__, which can perform I/O such as opening a network connection. When the block exits for any reason — normal completion or exception — the event loop awaits __aexit__, which can perform cleanup such as closing the connection. This guarantees resource cleanup without blocking the event loop and without requiring manual try/finally boilerplate.
+
+- **async for implements async iteration using __anext__ as an async method.** On each iteration, the event loop awaits __anext__, which can suspend the loop between items. Async generators — async def functions that contain yield — implement this protocol automatically. Between every iteration step, the event loop can run other coroutines, making async for the correct tool for streaming large datasets with constant memory usage rather than loading everything into memory at once.
+
+- **Between two await points, a coroutine runs atomically in a single thread.** No other coroutine can interrupt it during that interval, which means shared in-memory state mutated between awaits is safe from race conditions by design. However, this safety guarantee is also a responsibility: any blocking call — a synchronous database driver call, a CPU-bound computation, even `time.sleep` — freezes the entire event loop and stalls every other coroutine until it returns.
+
+- **Choose async for high-concurrency I/O when you control the full library stack; choose threads for synchronous-only libraries or simpler workloads.** Async delivers its scalability benefits only when every library in the call stack is async-compatible. If a single synchronous call sneaks in, it blocks the event loop for all coroutines. When you must use synchronous libraries, use `loop.run_in_executor` to offload those calls to a thread pool, combining the scalability of async request handling with the compatibility of threads for blocking calls.

@@ -1,0 +1,49 @@
+# Multiprocessing and Inter-Process Communication
+
+## Lesson Opening
+
+In the previous session we used threads for I/O-bound work and saw that shared state needs a lock. We also know that for CPU-bound work, threads do not run in parallel because of the GIL. So for real CPU parallelism we use multiple processes. Each process has its own Python interpreter and its own memory. There is no shared memory by default, so we need a way to send data between processes. That is inter-process communication, or IPC.
+
+Today we look at the multiprocessing module: how to start worker processes, how to pass data in and get results back, and why IPC has a cost that makes processes best for chunky CPU work rather than tiny tasks.
+
+By the end of this lesson you will understand when to use multiprocessing, how to run a function in a process pool and collect results, and why data must be serialized when sent between processes.
+
+------------------------------------------------------------------------
+
+## Section 1 — Why Processes for CPU-Bound Work
+
+### CONCEPT 0.1
+
+Threads share memory but only one thread runs Python bytecode at a time because of the GIL. Processes do not share memory. Each process has its own GIL and its own memory space. So multiple processes can run Python code in parallel on different cores. That is why CPU-bound programs use multiprocessing when they need speedup. The trade-off is that sharing data between processes requires copying or serialization. So we use processes when the work is substantial and the amount of data passed is manageable.
+
+### CONCEPT 1.1
+
+The multiprocessing module provides a Process class similar to Thread. You can also use a Pool. A pool maintains a set of worker processes. You submit work to the pool and get back results. The pool handles distributing tasks and collecting results. So for CPU-bound work that can be split into independent tasks, a process pool is the standard pattern.
+
+------------------------------------------------------------------------
+
+## Section 2 — Running Work in a Pool
+
+### CONCEPT 2.1
+
+You create a pool, often using a with statement so that the pool is closed when the block ends. You can call map on the pool with a function and an iterable of arguments. The pool sends each argument to a worker process, runs the function, and returns the results in order. So you get a list of results, one per input. The work runs in parallel across processes. Each process runs the function on its argument; there is no shared state, so no locks are needed inside the function.
+
+### EXAMPLE 2.1
+
+Here we define a function named compute that takes a parameter named n. It does a CPU-bound calculation, for example summing square roots of integers up to n, and returns the result. We create a pool using a with statement. We call map on the pool with compute and a list of values. The pool runs compute in worker processes. We get back a list of results. So we ran CPU-bound work in parallel. The total time is much less than running the same tasks one after another in a single process. This is the basic pattern for CPU-bound parallelism in Python.
+
+------------------------------------------------------------------------
+
+## Section 3 — The Cost of IPC
+
+### CONCEPT 3.1
+
+Data sent to a process and results returned must be serialized. Python uses pickle for that. So the arguments and return values must be picklable. Large or complex objects take time to serialize and copy. So the cost of IPC means that process-based parallelism pays off when each task does enough work to outweigh the cost of sending and receiving data. Small, frequent tasks can be slower with processes than running them in one process. So we use process pools for chunky CPU work, not for tiny functions.
+
+------------------------------------------------------------------------
+
+## Final Takeaways
+
+### CONCEPT 4.1
+
+Use multiprocessing for CPU-bound work when you need real parallelism. A process pool runs a function on multiple arguments in parallel across processes. Data is serialized when sent between processes, so IPC has a cost. Use pools for substantial tasks; avoid passing huge data or running very small tasks. Threads for I/O-bound, processes for CPU-bound: that is the Python concurrency model in practice.

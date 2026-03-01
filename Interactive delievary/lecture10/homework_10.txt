@@ -1,0 +1,5 @@
+Homework: Memory Layout and __slots__
+
+1. Define a class Event with __slots__ = ("timestamp", "name", "value") and __init__; create several instances and confirm you cannot assign to event.extra.
+2. Compare memory: create 100_000 instances of a normal class with three attributes, then 100_000 instances of a __slots__ class with the same three attributes; use sys.getsizeof or a simple loop and report approximate difference (or use a memory profiler if available).
+3. Real-world: Model a log entry with __slots__ ("level", "message", "created_at"); implement a small Logger that appends LogEntry instances to a list; keep the list bounded to the last N entries.

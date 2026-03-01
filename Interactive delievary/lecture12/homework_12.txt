@@ -1,0 +1,5 @@
+Homework: Threading
+
+1. Simulate 5 concurrent downloads: each "download" sleeps 0.5 seconds and appends its id to a shared list; use a lock when appending; after all threads join, print the list length and confirm it has 5 elements.
+2. Implement a thread-safe counter class with increment() and value(); use a lock inside the class; start 3 threads that each increment 100 times and assert the final value is 300.
+3. Real-world: Fetch several URLs (use urllib or requests) in parallel with threads; collect all responses into a list (with lock); time sequential vs threaded and show that threaded is faster when I/O dominates.

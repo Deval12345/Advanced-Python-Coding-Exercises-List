@@ -1,0 +1,22 @@
+# Key Points — Lecture 12: Exception Model & EAFP — Errors as Alternate Control Flow
+
+- EAFP (Easier to Ask Forgiveness than Permission) is Python's official style: attempt the operation, catch failures — do not pre-check preconditions
+- LBYL (Look Before You Leap) has a TOCTOU race condition: the file can disappear between the check and the open; EAFP eliminates the race window by removing the check
+- Python exceptions are a control flow mechanism, not just error signals — raising an exception jumps execution non-locally up the call stack to the first matching except clause
+- Python's exception hierarchy: BaseException → Exception → ValueError, TypeError, KeyError, AttributeError, OSError → FileNotFoundError, PermissionError
+- An except clause catches the named exception type and all of its subclasses
+- Always catch the most specific exception type you can actually handle; catching broadly silently swallows failure modes you did not intend to handle
+- Multiple except clauses on one try block handle distinct failure modes independently — each clause is responsible for exactly what it names
+- Use "as" in an except clause to bind the exception object and access its message or structured attributes
+- Never use a bare except with no type; it catches SystemExit and KeyboardInterrupt and hides all failures
+- Never catch Exception blindly unless you immediately re-raise with a bare raise to preserve the original traceback
+- The else clause runs only when the try block completed without raising; success-only logic belongs in else, not inside try, to prevent except clauses from catching errors in the success path
+- The finally clause runs unconditionally — after a clean try, after an except, after an except that re-raises — it is the unconditional cleanup guarantee
+- Industry database pattern: try for the query, except ValueError for business failures with rollback, except Exception for unexpected failures with rollback and re-raise, else for commit, finally for cursor close
+- Define custom exception classes by subclassing Exception or a domain base — not by raising raw Exception("message")
+- Custom exceptions store structured attributes (required amount, available amount, missing key) that callers access directly rather than parsing from a message string
+- Custom exception hierarchies are part of your public API — they document what can go wrong in executable, catchable form
+- Most-specific except clause first — Python matches top to bottom; a subclass listed after its parent will never be reached
+- Mature Python libraries define their own exception hierarchies: requests has HTTPError, Timeout, ConnectionError; SQLAlchemy has OperationalError, IntegrityError; Django has ObjectDoesNotExist
+- Bare raise (no argument) inside an except clause re-raises the current exception with its original traceback, without creating a new exception
+- EAFP code reads like intent: the try block describes what you want; the except clauses describe what you know how to handle

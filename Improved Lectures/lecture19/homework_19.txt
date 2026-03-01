@@ -1,0 +1,126 @@
+Homework — Lecture 19: Threading for I/O-Bound Work
+
+============================================================
+Exercise 1: Parallel URL Health Checker
+============================================================
+
+Build a parallel URL health checker using ThreadPoolExecutor.
+
+Requirements:
+- Define a list of at least 8 URLs using httpbin.org endpoints (examples:
+  http://httpbin.org/get, http://httpbin.org/uuid, http://httpbin.org/ip,
+  http://httpbin.org/delay/1, http://httpbin.org/delay/2,
+  http://httpbin.org/status/200, http://httpbin.org/status/404,
+  http://httpbin.org/headers).
+- Write a function checkUrl(url) that fetches the URL and returns a dictionary
+  containing: the URL, the HTTP status code, the response time in seconds, and
+  a boolean indicating whether the response body is valid JSON.
+- First run the checks sequentially in a plain for loop and record total time.
+- Then run the same checks using ThreadPoolExecutor with an appropriate
+  max_workers value and record total time.
+- Use as_completed() to collect results as they arrive and print each result
+  immediately (do not wait for all requests to finish before printing).
+- Print a summary table at the end showing: URL, status code, response time,
+  JSON-valid flag, and which run (sequential or parallel) produced the result.
+- Print the total elapsed time for both the sequential and parallel runs and
+  calculate the speedup ratio (sequential_time / parallel_time).
+
+Goal: You should observe that the parallel run is significantly faster than
+the sequential run. Think about why the speedup is not infinite even with
+many threads.
+
+============================================================
+Exercise 2: Race Condition Investigation — Bank Account
+============================================================
+
+Demonstrate and then fix a race condition in a shared bank account.
+
+Requirements:
+- Implement an UnsafeBankAccount class with attributes: balance (starting at
+  1000), deposit_count, and withdraw_count. Implement deposit(amount) and
+  withdraw(amount) methods. Neither method should use any locks. In withdraw,
+  if the balance would go negative, skip the withdrawal but still count it.
+- Implement a SafeBankAccount class with the same interface, but protect all
+  reads and writes to balance, deposit_count, and withdraw_count with a single
+  threading.Lock.
+- Write a test function runAccountTest(account, numThreads) that:
+    - Creates numThreads // 2 threads each calling deposit(10) once.
+    - Creates numThreads // 2 threads each calling withdraw(10) once.
+    - Starts all threads, then joins all threads.
+    - Returns the final balance, deposit_count, and withdraw_count.
+- Run the test with 1000 threads on UnsafeBankAccount. Run it 5 times in a
+  loop and print the results each time. You should see inconsistent final
+  balances — this is the race condition in action.
+- Run the same test with 1000 threads on SafeBankAccount. Run it 5 times and
+  confirm the final balance is always correct and consistent.
+- In a comment, explain: (a) why the unsafe version produces wrong results,
+  (b) why the results vary between runs, and (c) what specifically the lock
+  prevents.
+
+Note: To make the race condition reliably visible in the unsafe version, add
+a time.sleep(0) call between reading and writing the balance inside deposit
+and withdraw, just as was done in the lecture example.
+
+============================================================
+Exercise 3: Three-Stage Pipeline with Two Queues
+============================================================
+
+Build a multi-stage data processing pipeline using threading.Queue.
+
+Requirements:
+- Create two queues: inputQueue (between producer and processor) and
+  outputQueue (between processor and writer). Both should have maxsize=5.
+- Stage 1 — Producer: A single thread that generates 20 work items. Each
+  work item is a dictionary with keys: id (integer 0–19) and value (a random
+  integer between 1 and 100). The producer should sleep 0.02 seconds between
+  items to simulate the pace of arriving data. After all items are produced,
+  put a None sentinel onto inputQueue.
+- Stage 2 — Processor: Two threads that each read from inputQueue, apply a
+  transformation (multiply value by 3 and add 7), and put the result onto
+  outputQueue as a new dictionary with keys: id, original_value, and
+  processed_value. When a processor thread receives None from inputQueue, it
+  should re-put None onto inputQueue (so the other processor thread also sees
+  it) and put a None sentinel onto outputQueue, then exit.
+- Stage 3 — Writer: A single thread that reads from outputQueue and appends
+  each result to a list called finalResults. When the writer receives two None
+  sentinels (one from each processor thread), it should exit. Print each
+  result as it is written.
+- Start all threads, join all threads, then print the total count of processed
+  items and verify it equals 20.
+- In comments, explain why two queues are used instead of one and why the
+  writer must wait for two sentinels rather than one.
+
+Hint: Track how many sentinels the writer has received using a counter.
+
+============================================================
+Exercise 4: executor.map() vs as_completed() — Ordering Comparison
+============================================================
+
+Use ThreadPoolExecutor to process tasks with both map() and as_completed(),
+and observe and explain the ordering difference.
+
+Requirements:
+- Define a list of 10 task dictionaries. Each dictionary should have keys:
+  id (0–9) and delay (a float representing seconds to sleep, varying between
+  0.05 and 0.5 seconds, assigned so that tasks with higher IDs tend to have
+  shorter delays — i.e., later tasks finish first).
+- Write a function processTask(task) that sleeps for task["delay"] seconds
+  (simulating I/O) and returns a dictionary with: id, delay, result (a string
+  like "Task N complete"), and finished_at (a timestamp from time.perf_counter
+  relative to the program start, so you can see the order of completion).
+- Run 1: Use executor.map(processTask, tasks) to process all 10 tasks.
+  Collect and print results. Note that map() returns results in submission
+  order regardless of which task finished first.
+- Run 2: Use executor.submit() for each task and as_completed() to iterate
+  results. Print each result as it arrives. Note that results arrive in
+  completion order (fastest first), not submission order.
+- For both runs, print: the task ID, its delay, and the order in which the
+  result was received (1st, 2nd, 3rd, etc.).
+- Include a clearly written comment block (at least 8 lines) that explains:
+  (a) the exact scenario where you would choose executor.map() over
+  as_completed(), (b) the exact scenario where you would choose as_completed()
+  over map(), and (c) what the tradeoff is in terms of latency vs ordering.
+
+Goal: You should clearly see that map() returns results in submission order
+(task 0 first, task 9 last) while as_completed() returns results in
+completion order (the task with the shortest delay first).

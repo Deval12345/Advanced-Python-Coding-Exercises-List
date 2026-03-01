@@ -1,0 +1,85 @@
+Homework — Lecture 21: Async/Await Fundamentals
+
+===============================================================
+EXERCISE 1 — Concurrent API Fetcher with asyncio.gather
+===============================================================
+
+Build an async HTTP client that fetches data from multiple public API endpoints concurrently.
+
+Requirements:
+
+1. Install the `httpx` library (pip install httpx[asyncio]). Use `httpx.AsyncClient` as your HTTP client throughout.
+
+2. Write an async coroutine called `fetchEndpoint` that accepts a session (an httpx.AsyncClient instance) and a URL string. It should perform a GET request, extract the JSON body, and return a dictionary containing two keys: "url" (the URL that was fetched) and "data" (the parsed JSON response). If the request raises an exception for any reason, the coroutine should catch it and return a dictionary with "url" and an "error" key containing the exception message as a string.
+
+3. Write an async coroutine called `fetchAll` that accepts a list of URL strings. Inside it, create a single `httpx.AsyncClient` instance using `async with`, then use `asyncio.gather` with `return_exceptions=True` to fetch all URLs concurrently within that single client session. Return the list of result dictionaries.
+
+4. In your main coroutine, call `fetchAll` with at least five URLs from the public JSONPlaceholder API (https://jsonplaceholder.typicode.com) — for example, `/posts/1` through `/posts/5`. Use `time.perf_counter` to measure total elapsed time. Print each result's URL and either the first key of the returned JSON object (to prove data arrived) or the error message. Print the total elapsed time.
+
+5. Measurable requirement: fetching five URLs that each take approximately 300 ms individually must complete in under 700 ms total when run with gather. If your implementation is running them sequentially, elapsed time will be close to 1500 ms.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Task Scheduling, Timeout, and Graceful Cancellation
+===============================================================
+
+Build a task manager that runs background jobs with a deadline, cancels stragglers, and reports results.
+
+Requirements:
+
+1. Write an async coroutine called `simulatedJob` that accepts a job name (string) and a duration (float, seconds). The coroutine should print a "started" message when it begins, await asyncio.sleep for the given duration, print a "completed" message, and return a result string formatted as "Result from <job_name>". If the coroutine receives `asyncio.CancelledError`, it must print a "cancelled" message that includes the job name and then re-raise the exception.
+
+2. Write an async coroutine called `runWithDeadline` that accepts a list of tuples of the form (job_name, duration) and a deadline (float, seconds). Inside it, use `asyncio.create_task` to schedule all jobs as independent tasks before awaiting anything. Then use `asyncio.wait` with the deadline as a timeout to collect done and pending sets.
+
+3. After `asyncio.wait` returns, cancel every task in the pending set by calling `.cancel()` on each one. Then await all pending tasks using `asyncio.gather` with `return_exceptions=True` so that their CancelledError exceptions are drained cleanly rather than propagated.
+
+4. For each task in the done set, attempt to retrieve its result using `.result()` inside a try/except block. Print "SUCCESS: <result>" for tasks that completed normally. Print "FAILED: <exception>" for tasks that raised an exception other than CancelledError.
+
+5. Return a summary dictionary with two keys: "completed" (an integer count of tasks that finished before the deadline) and "cancelled" (an integer count of tasks that were still pending when the deadline expired).
+
+6. Test your implementation with at least six jobs of varying durations (ranging from 0.2 s to 3.0 s) and a deadline of 1.5 seconds. Verify that the summary counts are correct and that the cancelled tasks printed their "cancelled" messages before the program exited.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Async Context Manager for a Rate-Limited Resource
+===============================================================
+
+Implement an async context manager that enforces a rate limit on a shared resource.
+
+Requirements:
+
+1. Write a class called `RateLimitedResource` that accepts two constructor arguments: `name` (string) and `requestsPerSecond` (float). The class must implement the async context manager protocol by defining `__aenter__` and `__aexit__` as async methods.
+
+2. The class should maintain an internal list (or deque) of timestamps recording when the resource was most recently acquired. When `__aenter__` is called, it must inspect the timestamp list and determine whether the current acquisition would exceed the rate limit. If the rate limit would be exceeded, `__aenter__` should calculate the number of seconds to wait and await `asyncio.sleep` for that duration before proceeding. It should then record the current timestamp and print a message indicating acquisition was granted.
+
+3. `__aexit__` should print a release message and return False (do not suppress exceptions).
+
+4. Write a coroutine called `useResource` that accepts a resource instance, a task name (string), and a workDuration (float). It should enter the resource using `async with`, print a "working" message, await asyncio.sleep for workDuration to simulate work, and print a "done" message.
+
+5. Write a main coroutine that creates a `RateLimitedResource` with a rate limit of 3 requests per second. Use `asyncio.gather` to run 8 concurrent `useResource` calls against the same resource instance. Use `time.perf_counter` to measure total elapsed time and print it.
+
+6. Measurable requirement: with a rate limit of 3 per second and 8 requests, the minimum theoretical completion time is ceil(8/3) - 1 = approximately 1.67 seconds of enforced wait time plus the work duration. Verify with your timing output that rate limiting is actually being applied.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Async Generator for Streaming Data Processing
+===============================================================
+
+Build a streaming data pipeline using an async generator and async for loop.
+
+Requirements:
+
+1. Write an async generator function called `streamSensorReadings` that accepts a sensorId (string) and a totalReadings (integer). On each iteration it should simulate fetching one sensor reading by awaiting `asyncio.sleep` for a random duration between 0.05 and 0.15 seconds (use `random.uniform`). Then yield a dictionary with three keys: "sensor" (the sensorId), "timestamp" (the current time from `time.time()`), and "value" (a random float between 0.0 and 100.0 from `random.uniform`).
+
+2. Write an async generator function called `filteredStream` that accepts an async generator and a threshold (float). It should iterate the incoming generator using `async for` and only yield readings whose "value" key exceeds the threshold. This is a pipeline stage — it does not create readings itself, it transforms them.
+
+3. Write a coroutine called `processSensor` that accepts a sensorId (string), a totalReadings (integer), and a threshold (float). Inside it, compose `filteredStream(streamSensorReadings(sensorId, totalReadings), threshold)` and iterate the result with `async for`. For each reading that passes the filter, print the sensor ID, value (rounded to 2 decimal places), and timestamp. After the loop, print how many readings passed the filter out of the total.
+
+4. Write a main coroutine that uses `asyncio.gather` to run `processSensor` concurrently for three different sensor IDs ("SENSOR_A", "SENSOR_B", "SENSOR_C"), each with 10 total readings and a threshold of 50.0. Output from the three sensors will be interleaved in the console output because all three generators are running concurrently.
+
+5. Measurable requirement: with 10 readings per sensor at an average delay of 0.1 s each, sequential processing would take approximately 3 seconds. Concurrent processing of all three sensors must complete in under 1.5 seconds. Print the total elapsed time to verify.
+
+No solutions provided.

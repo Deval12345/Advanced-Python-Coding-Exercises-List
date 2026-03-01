@@ -1,0 +1,5 @@
+Homework: Attribute Access Control
+
+1. Create a Config class that loads keys from a dictionary and caches them on first access using __getattr__. Support a default value when the key is missing.
+2. Implement a lazy proxy that wraps a real object and logs every attribute access (read) using __getattribute__, then delegates to the wrapped object.
+3. Real-world: Build a small FeatureFlag object that takes a dictionary of flag names to booleans and exposes them as attributes (e.g. featureFlag.dark_mode). Use __getattr__ so that unknown flags raise a clear AttributeError with the flag name.

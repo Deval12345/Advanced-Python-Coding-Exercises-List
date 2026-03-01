@@ -1,0 +1,175 @@
+Lecture 18 Homework — Concurrency Models Overview: I/O-Bound vs CPU-Bound Work
+================================================================================
+
+Complete all four exercises. Each exercise is designed to build a concrete,
+measurable understanding of how Python's concurrency model choices interact
+with the nature of the workload. Do not skip the timing and analysis steps —
+the numbers are the point.
+
+--------------------------------------------------------------------------------
+
+EXERCISE 1 — Profiling to Identify I/O-Bound vs CPU-Bound Behavior
+--------------------------------------------------------------------
+
+Write a script that contains TWO functions:
+
+  - fetchDataSimulated(taskId): simulates an I/O-bound operation by sleeping
+    for 0.5 seconds and returning a string result.
+
+  - processDataSimulated(n): simulates a CPU-bound operation by computing the
+    sum of squares for integers 0 through n (use n = 1_500_000).
+
+Profile both functions using cProfile and time.perf_counter.
+
+PART A:
+  - Run fetchDataSimulated 8 times sequentially.
+  - Run processDataSimulated 4 times sequentially.
+  - Use time.perf_counter to record wall time for each group.
+  - Use cProfile.run() to profile each group separately and print the stats.
+
+PART B:
+  - Read the cProfile output for each function.
+  - For the I/O function, identify which line in the profile shows the most
+    cumulative time — it should be the sleep call.
+  - For the CPU function, identify which line shows the most cumulative time —
+    it should be the computeDataSimulated call itself.
+
+PART C:
+  - Write a short comment block (4-6 lines) in your script explaining:
+      * Which function is I/O-bound and why the profile confirms it
+      * Which function is CPU-bound and why the profile confirms it
+      * What concurrency model you would apply to each and why
+
+Goal: practice reading profiler output to make the diagnosis before touching
+any concurrency tool.
+
+--------------------------------------------------------------------------------
+
+EXERCISE 2 — Sequential vs Threaded I/O: Measure the Speedup
+-------------------------------------------------------------
+
+Write a script that simulates downloading data from a web API by sleeping for
+a fixed duration. Do NOT use actual HTTP requests — use time.sleep to simulate
+the I/O latency.
+
+PART A — Sequential version:
+  - Define simulateDownload(itemId, delay=0.8): sleeps for `delay` seconds and
+    returns a result string.
+  - Define runSequential(count): runs simulateDownload count times in a list
+    comprehension, records wall time with time.perf_counter, and prints:
+      "Sequential: {count} downloads in {elapsed:.2f}s"
+
+PART B — Threaded version:
+  - Define runThreaded(count): creates count threads, each running
+    simulateDownload. Use threading.Thread and threading.Lock to safely collect
+    results into a shared list. Record wall time and print:
+      "Threaded: {count} downloads in {elapsed:.2f}s"
+
+PART C — Comparison:
+  - Run both versions with count=6 and count=10.
+  - Compute and print the speedup ratio for each: sequential_time / threaded_time
+  - The ratio should be approximately equal to count (e.g., 6x for count=6).
+  - Write a comment explaining why the speedup is proportional to the number
+    of tasks for I/O-bound work with uniform latency.
+
+PART D — Edge case:
+  - Run both versions with count=1.
+  - Record and explain: why is the speedup ratio approximately 1.0 here?
+    What does this tell you about when threading starts to provide benefit?
+
+Goal: build intuition for the linear speedup pattern of threading on I/O-bound
+work and understand the baseline case.
+
+--------------------------------------------------------------------------------
+
+EXERCISE 3 — Demonstrating That Threading Does NOT Speed Up CPU-Bound Work
+--------------------------------------------------------------------------
+
+This exercise forces you to observe the GIL's effect directly with measurable
+timing data.
+
+PART A — Define the CPU-bound function:
+  - Define computeSquareSum(n): iterates from 0 to n, accumulates i*i, returns
+    the total. Use n = 2_000_000.
+
+PART B — Sequential baseline:
+  - Define runCpuSequential(workerCount): calls computeSquareSum workerCount
+    times in a list comprehension. Record wall time and print:
+      "CPU Sequential ({workerCount} workers): {elapsed:.2f}s"
+
+PART C — Threaded version:
+  - Define runCpuThreaded(workerCount): creates workerCount threads each
+    running computeSquareSum(2_000_000). Start all threads, join all threads.
+    Record wall time and print:
+      "CPU Threaded ({workerCount} workers): {elapsed:.2f}s"
+
+PART D — Run the comparison:
+  - Run sequential and threaded versions with workerCount = 2, 4, and 8.
+  - Print the speedup ratio for each: sequential_time / threaded_time
+  - You should observe that the ratio is approximately 1.0 in all cases —
+    threading provides no speedup for CPU-bound work.
+
+PART E — Analysis (write as a comment block in your script):
+  - Explain in 4-6 sentences why the threaded version does not improve on the
+    sequential version for CPU-bound work.
+  - Specifically reference the GIL, Python bytecode execution, and when the
+    GIL is released vs. held.
+  - Explain what tool you would use instead, and why it would produce a real
+    speedup (you do not need to implement it — just explain the mechanism).
+
+Goal: see the GIL's CPU-bound limitation with real numbers, not just as theory.
+
+--------------------------------------------------------------------------------
+
+EXERCISE 4 — Concurrency Model Decision Table
+--------------------------------------------
+
+This exercise tests your ability to apply the decision framework to real-world
+workload descriptions. For each of the five workloads below, write your answers
+in a structured comment or print block in a Python script.
+
+For EACH workload, provide:
+  (a) Your diagnosis: I/O-bound or CPU-bound? Mixed? Explain in 1-2 sentences.
+  (b) The recommended Python concurrency model: threads, async, or multiprocessing.
+  (c) Your justification: 2-3 sentences explaining why that model fits the
+      workload, what it gives you, and what the wrong choice would cost.
+
+WORKLOAD 1 — Log File Aggregator:
+  A script reads 200 large log files from disk (each 50MB), extracts error
+  lines, and writes a summary report. The extraction logic is a simple regex
+  match — one line at a time.
+
+WORKLOAD 2 — Real-Time Chat Server:
+  A WebSocket server handles 8,000 simultaneous connected clients. Each
+  connection is mostly idle but sends and receives small messages occasionally.
+  The server must respond within 50 milliseconds.
+
+WORKLOAD 3 — Image Processing Pipeline:
+  A batch job resizes and applies filters to 10,000 high-resolution images
+  using a custom Python image processing library. Each image takes about
+  3 seconds of pure CPU time to process.
+
+WORKLOAD 4 — Price Aggregator:
+  A financial data service polls 50 external REST APIs every 30 seconds to
+  collect current prices. Each API call takes between 100ms and 800ms to
+  respond. The service runs continuously.
+
+WORKLOAD 5 — ML Feature Engineering:
+  A data pipeline applies a complex feature engineering function to each row
+  in a pandas DataFrame with 5 million rows. The function does arithmetic
+  computations and string transformations with no external calls.
+
+After completing all five workloads, write a final paragraph (as a comment)
+summarizing the pattern: what characteristic of a workload most reliably tells
+you which concurrency model to choose?
+
+Goal: internalize the decision framework as a practical skill, not just a
+memorized rule.
+
+--------------------------------------------------------------------------------
+
+SUBMISSION CHECKLIST:
+  - Exercise 1: script with two profiled functions and analysis comment
+  - Exercise 2: script with sequential, threaded, and comparison for count=1, 6, 10
+  - Exercise 3: script with sequential and threaded CPU comparison for 2, 4, 8 workers
+  - Exercise 4: script or text file with all five workload analyses and summary paragraph

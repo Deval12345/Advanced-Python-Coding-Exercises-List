@@ -1,0 +1,142 @@
+Lecture 20 Homework: The Global Interpreter Lock
+Advanced Python Course
+================================================
+
+Complete all four exercises. Each exercise targets a specific aspect of GIL behavior covered in lecture. Run your benchmarks on your own machine and record the actual numbers you observe — expected results are described so you know what to look for, but your specific times will vary based on your hardware.
+
+
+------------------------------------------------------------------------
+Exercise 1: GIL Benchmark — Prove the GIL Bottleneck
+------------------------------------------------------------------------
+
+Goal: empirically demonstrate the GIL's impact on CPU-bound parallel work by measuring the actual time difference between sequential, threaded, and multiprocessing approaches.
+
+Requirements:
+
+1. Write a function called primeCount(n) that counts how many prime numbers exist from 2 to n. Use a pure Python implementation (a simple trial division loop is sufficient — do not use any external libraries). This function must be CPU-bound: it should not perform any I/O or call any C extension that would release the GIL.
+
+2. Choose a value of n large enough that a single call takes at least 3-5 seconds on your machine (start with n=500_000 and adjust if needed). Record this n value in a comment at the top of your script.
+
+3. Benchmark three approaches, each running primeCount with the same value of n a total of 4 times:
+   - Approach A: Sequential — call primeCount four times in a for loop, one after another.
+   - Approach B: Threaded — use concurrent.futures.ThreadPoolExecutor with 4 workers and submit 4 calls to primeCount.
+   - Approach C: Multiprocessing — use concurrent.futures.ProcessPoolExecutor with 4 workers and submit 4 calls to primeCount.
+
+4. For each approach, record the total elapsed wall-clock time using time.perf_counter(). Print the results in a formatted table showing: approach name, total time, and speedup ratio relative to the sequential approach.
+
+5. Calculate two ratios: thread_time / sequential_time and process_time / sequential_time. The thread ratio should be close to 1.0 (no speedup). The process ratio should be close to 0.25 on a 4-core machine (approximately 4x speedup).
+
+6. Write a comment block at the bottom of the script (5-10 sentences) explaining WHY the threading approach shows approximately 1x speedup and the multiprocessing approach shows approximately 4x speedup. Your explanation must reference: the GIL, Python bytecode execution, system calls, separate interpreters, and CPU core usage.
+
+Measurable success criteria:
+- thread_time / sequential_time is between 0.90 and 1.15 (no meaningful speedup)
+- process_time / sequential_time is between 0.20 and 0.40 on a 4-core machine (meaningful speedup)
+- The printed output table shows all three times and both ratios
+- The explanation comment is accurate and uses correct terminology
+
+
+------------------------------------------------------------------------
+Exercise 2: Reference Count Inspector
+------------------------------------------------------------------------
+
+Goal: make Python's reference counting memory management concrete and observable by tracking reference counts through various operations and demonstrating both the success case (immediate deallocation) and the failure case (circular reference requiring the cyclic garbage collector).
+
+Requirements:
+
+1. Write a function called refCountTracker(obj) that takes any Python object and prints its reference count (using sys.getrefcount) with a label. Remember to account for the extra reference that getrefcount itself adds — your output should print the "true" external reference count (i.e., sys.getrefcount(obj) - 1) alongside the label.
+
+2. Demonstrate reference count changes through each of the following operations, printing the count before and after each one:
+   a. Binding the object to a second name (alias = obj)
+   b. Appending the object to a list (my_list.append(obj))
+   c. Passing the object to a function (a function that stores the argument, not just inspects it)
+   d. Removing the alias (del alias)
+   e. Removing the list element (my_list.remove(obj) or del my_list)
+
+3. Create a class called TrackedObject. Its __init__ method should print "TrackedObject created: <id>" (using the object's id()). Its __del__ method should print "TrackedObject destroyed: <id>". The id is used to distinguish multiple instances.
+
+4. Demonstrate immediate deallocation: create a TrackedObject instance, verify it exists, then delete all references to it (del). Show that the __del__ message prints immediately — before any subsequent print statement — proving that reference counting frees memory at the instant the last reference disappears. This behavior is deterministic and not scheduled.
+
+5. Demonstrate circular reference deallocation failure: create two TrackedObject instances, A and B. Give A an attribute that references B, and give B an attribute that references A (a circular reference). Then delete both names (del a, del b). Show that neither __del__ is called immediately — the circular reference keeps both counts above zero. Then explicitly call gc.collect() and show that __del__ IS called after the cyclic garbage collector runs.
+
+6. Write a comment explaining why Python needs a cyclic garbage collector in addition to reference counting, and what type of real-world code patterns (hint: doubly-linked lists, parent-child object trees, event handlers with back-references) are most likely to create circular references.
+
+Measurable success criteria:
+- refCountTracker output correctly shows count changes at each step
+- TrackedObject.__del__ fires immediately when all linear references are removed
+- TrackedObject.__del__ does NOT fire until gc.collect() is called when a circular reference exists
+- Comments correctly identify why both mechanisms (refcount + cyclic GC) are necessary
+
+
+------------------------------------------------------------------------
+Exercise 3: GIL-Releasing C Extension vs Pure Python
+------------------------------------------------------------------------
+
+Goal: demonstrate that NumPy operations release the GIL during array computation, enabling threading to achieve true parallelism for NumPy-based work — unlike pure Python computation where the GIL blocks parallelism.
+
+Requirements:
+
+1. Define two functions that compute the sum of squares of integers from 0 to 999_999:
+   - pureSum(): uses a pure Python expression: sum(x*x for x in range(1_000_000))
+   - numpySum(): uses NumPy: import numpy as np; arr = np.arange(1_000_000); return np.sum(arr * arr)
+
+2. Benchmark each function alone to establish single-threaded baseline times. Use time.perf_counter(). Record both times.
+
+3. For each function, run two simultaneous calls using concurrent.futures.ThreadPoolExecutor with 2 workers (submit both tasks at the same time using executor.submit, not executor.map — store both Future objects, then call .result() on both). Time the total wall-clock time from before the first submit to after the second .result() call.
+
+4. Calculate and print the following ratios:
+   - pureSum single-thread time
+   - pureSum 2-thread concurrent time
+   - Ratio: concurrent / single (for pureSum, this should be ≥ 1.7 — not faster because of the GIL)
+   - numpySum single-thread time
+   - numpySum 2-thread concurrent time
+   - Ratio: concurrent / single (for numpySum, this should be ≤ 0.6 — faster because NumPy releases the GIL)
+
+5. Write a comment block explaining:
+   a. Why pureSum with 2 threads is NOT faster than pureSum alone (GIL holds during Python bytecode)
+   b. Why numpySum with 2 threads IS faster than numpySum alone (NumPy releases the GIL during C-level array operations)
+   c. What this means for real-world ML and data pipelines that use NumPy, pandas, or similar libraries
+   d. Why this matters when deciding between threads and processes for numerical code
+
+Measurable success criteria:
+- Both functions return the same integer result (verifies correctness)
+- pureSum 2-thread concurrent time is not faster than pureSum single-thread time (GIL confirmed)
+- numpySum 2-thread concurrent time is noticeably faster than numpySum single-thread time (GIL released confirmed)
+- All four times and two ratios are printed with clear labels
+
+
+------------------------------------------------------------------------
+Exercise 4: Architectural Decision Worksheet
+------------------------------------------------------------------------
+
+Goal: demonstrate the complete GIL decision framework by benchmarking the same pair of workloads (I/O-bound and CPU-bound) across three concurrency models and drawing correct architectural conclusions from measured data.
+
+Requirements:
+
+1. Define an I/O-bound workload function: fetchUrl(url) that makes an HTTP GET request to the given URL and returns the response body length (in bytes). Use urllib.request.urlopen. Use the URL "https://httpbin.org/delay/1" — this endpoint always responds after approximately 1 second, simulating a slow external API. You will fetch 8 of these URLs total.
+
+2. Define a CPU-bound workload function: countPrimes(n) that counts primes from 2 to n using a pure Python trial division loop. Choose n such that a single call takes approximately 2-3 seconds. You will run 4 of these computations total.
+
+3. Benchmark the I/O-bound workload (8 URL fetches) under three models:
+   - Model A: Sequential — fetch all 8 URLs in a for loop, one after another
+   - Model B: ThreadPoolExecutor with 8 workers — submit all 8 fetches simultaneously
+   - Model C: ProcessPoolExecutor with 4 workers — submit all 8 fetches across 4 processes
+
+4. Benchmark the CPU-bound workload (4 countPrimes calls) under the same three models:
+   - Model A: Sequential — call countPrimes 4 times in a loop
+   - Model B: ThreadPoolExecutor with 4 workers — submit 4 calls simultaneously
+   - Model C: ProcessPoolExecutor with 4 workers — submit 4 calls simultaneously
+
+5. Print a formatted comparison table with columns: workload type, model, total time, speedup vs sequential. Compute speedup as sequential_time / model_time (a speedup of 4.0 means 4x faster than sequential).
+
+6. Write a conclusion comment block that completes both of these sentences, filling in the blanks with specific tool names and concise GIL-based reasoning (2-3 sentences each):
+   "For I/O-bound work, [MODEL] is best because [GIL REASON]."
+   "For CPU-bound work, [MODEL] is best because [GIL REASON]."
+
+7. Make sure your script uses the `if __name__ == "__main__":` guard (required for multiprocessing on all platforms).
+
+Measurable success criteria:
+- I/O-bound: ThreadPoolExecutor time is approximately 1/8th of sequential time (8x speedup, all requests in parallel)
+- I/O-bound: ProcessPoolExecutor time is slower than ThreadPoolExecutor (process spawn overhead for I/O work not worth it)
+- CPU-bound: ThreadPoolExecutor time is approximately equal to sequential time (GIL blocks parallelism)
+- CPU-bound: ProcessPoolExecutor time is approximately 1/4th of sequential time (4x speedup, 4 processes on 4 cores)
+- The printed table and conclusion comments clearly explain which model wins for each workload type and why

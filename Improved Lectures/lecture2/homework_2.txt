@@ -1,0 +1,19 @@
+Homework: Python Data Model Part 2
+
+Exercise 1: Custom Container — Order History
+Build an OrderHistory class that stores a list of order records. Each order is a dictionary with keys "orderId", "product", and "total". The class must implement __len__ to return the number of orders, __getitem__ to retrieve an order by index, __contains__ to check whether an order with a given orderId exists, and __iter__ to allow looping through all orders. Test it by creating an instance with at least five orders, printing its length, accessing the third order by index, checking membership with the in keyword, and iterating through all orders to print each product name.
+
+Exercise 2: Operator Overloading — Distance Values
+Build a Distance class that represents a measurement in kilometres. Store the numeric value in an attribute called kilometres. Implement __add__ so that adding two Distance objects produces a new Distance with the combined total. Implement __str__ to return a user-friendly string such as "12.5 km" and __repr__ to return a developer-friendly string such as "Distance(12.5)". Test it by creating two Distance instances, adding them together, printing the result with print, and inspecting the repr in the console. Confirm that adding a Distance to a plain integer raises a TypeError with a helpful message.
+
+Exercise 3: Combined Container and Operator — Student Cohort
+Build a StudentCohort class that stores a list of student records, where each record is a dictionary with keys "studentId" and "name". Implement __len__, __getitem__, __contains__ (checking by studentId), and __iter__. Also implement __add__ so that two cohorts can be merged into a new StudentCohort containing all students from both. Implement __repr__ to show the class name and student count. Test the full interface by creating two cohorts, merging them with the plus operator, checking that the merged cohort has the correct length, and confirming that a known studentId is found using the in keyword.
+
+Exercise 4: Responsible Overloading — Decision Task
+You are given three scenarios below. For each one, decide whether operator overloading is appropriate or whether a named method should be used instead. Write your reasoning in comments alongside each decision.
+
+Scenario A: A ShoppingCart class. Should cart1 + cart2 merge the two carts?
+Scenario B: A DatabaseConnection class. Should conn1 + conn2 combine two connections?
+Scenario C: A LogEntry class. Should entry1 + entry2 concatenate two log messages?
+
+For each scenario where you decide overloading is appropriate, implement the __add__ method. For each scenario where you decide a named method is better, implement the named method instead and explain in a comment why the operator would have been misleading.

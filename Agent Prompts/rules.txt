@@ -1,0 +1,128 @@
+✔ Do NOT modify code logic or structure ✔ Do NOT change concepts, explanations, or technical meaning ✔ Do NOT remove instructional details ✔ Conceptual explanations MUST remain unchanged ✔ Only adjust wording for natural speech clarity ✔ Remove ALL non-speech artifacts ✔ Preserve original instructional intent 
+
+ 
+
+ABSOLUTE Speech Formatting Constraints 
+
+The speech.md output MUST obey ALL of the following: 
+
+✔ Contain ONLY natural spoken language ✔ Contain ZERO code syntax ✔ Contain ZERO symbols used in programming ✔ Contain ZERO punctuation verbalization ✔ Contain ZERO hyphens ✔ Contain ZERO brackets ✔ Contain ZERO underscores spoken aloud ✔ Contain ZERO special characters 
+
+ 
+
+STRICT Symbol Removal Rule 
+
+
+🚫 NEVER output: 
+
+Hyphens 
+
+Underscores 
+
+Brackets 
+
+Parentheses 
+
+Colons 
+
+Semicolons 
+
+Commas used as syntax 
+
+Any programming symbols 
+
+🚫 NEVER describe symbols verbally. 
+
+🚫 NEVER include formatting artifacts. 
+
+Speech must read like clean narration for a human instructor. 
+
+ 
+
+Speech Processing Rules 
+
+Apply transformations ONLY to narration. 
+
+ 
+
+1. Syntax → Spoken Form 
+
+Convert expressions into speech: 
+
+• len(x) → “len method call with x” 
+
+• def len(i): → “len method defined with i” 
+
+• list[i] → “list indexed at i” 
+
+• getitem(i) → “getitem method call with i as argument” 
+
+ 
+
+2. Special Methods 
+
+def __len__() → “function len definition” 
+
+Symbols must NOT appear in narration. 
+
+ 
+
+3. Index Expressions 
+
+loader[i] → “i th index of loader variable” 
+
+🚫 NEVER mention brackets. 
+
+ 
+
+4. Variable Names 
+
+✔ Preserve variable names ✔ NEVER pronounce underscores 
+
+custom_list → “variable custom_list” 
+
+NOT: 
+
+“custom underscore list” 
+
+ 
+
+5. Remove Non-Speech Artifacts 
+
+Remove: 
+
+✔ Visual instructions ✔ Code reading narration ✔ Formatting labels ✔ Structural markers ✔ Any symbol noise 
+
+ 
+
+6. Code Reading Suppression 
+
+If narration repeats visible code: 
+
+✔ Remove it ✔ Keep only conceptual explanation 
+
+ 
+
+7. Punctuation Handling 
+
+✔ Convert into natural spoken flow ✔ Remove symbolic punctuation entirely 
+
+Speech must resemble clean voiceover text. 
+
+ 
+
+8. Context Bridging 
+
+If a code explanation begins without transition: 
+
+Add minimal context: 
+
+“Let us consider this code block” 
+
+Only when necessary. 
+
+
+Output MUST contain ZERO symbols  
+
+Output MUST read naturally for audio  
+ 

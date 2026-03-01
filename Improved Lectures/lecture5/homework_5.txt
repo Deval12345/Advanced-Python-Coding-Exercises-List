@@ -1,0 +1,83 @@
+Homework: Memory Layout and Python Object Model
+
+---
+
+Exercise 1: Find and Fix an Aliasing Bug
+
+A junior developer on your team wrote the following code to track orders for two different warehouses. They believed warehouseB starts with its own copy of the base order list, but orders placed in warehouseB are unexpectedly appearing in warehouseA too.
+
+    baseOrderList = ["orderAAA", "orderBBB"]
+    warehouseA = baseOrderList
+    warehouseB = baseOrderList
+
+    warehouseB.append("orderCCC")
+
+    print(warehouseA)  # Should only have ["orderAAA", "orderBBB"] but shows 3 items
+    print(warehouseB)  # ["orderAAA", "orderBBB", "orderCCC"]
+
+Tasks:
+a) Explain in your own words why warehouseA reflects the append made to warehouseB.
+b) Fix the code so that warehouseA, warehouseB, and baseOrderList are all independent lists.
+c) After your fix, verify that appending to warehouseB does not affect warehouseA or baseOrderList.
+d) Write one sentence explaining when you would choose a shallow copy versus a deep copy for this kind of fix.
+
+---
+
+Exercise 2: Safe Configuration Template Using Deep Copy
+
+You are building a multi-tenant SaaS application. Each new tenant gets their own configuration based on a shared default template. The template contains nested settings that must not be shared between tenants.
+
+    import copy
+
+    defaultTemplate = {
+        "database": {"host": "localhost", "port": 5432, "pool_size": 10},
+        "cache": {"timeout": 300, "max_entries": 1000},
+        "featureFlags": {"betaFeatures": False, "analyticsEnabled": True}
+    }
+
+Tasks:
+a) Write a function named createTenantConfig that accepts a tenantName string and returns a fully independent copy of defaultTemplate.
+b) Inside the function, modify the returned config so that the database host becomes the string tenantName plus ".db.internal" (for example, "acmecorp.db.internal").
+c) Create two tenants: acmeCorp and globexInc. Verify that modifying acmeCorp's database port does not change globexInc's database port or the defaultTemplate.
+d) Explain why copy.copy would be insufficient here and copy.deepcopy is required.
+
+---
+
+Exercise 3: Safe None Handling with the Sentinel Pattern
+
+You are writing a function named applyDiscount for an e-commerce platform. The function takes a productPrice and an optional discountRate. There are three cases:
+
+    - No discountRate argument passed: apply the store default discount of 10 percent.
+    - discountRate is explicitly None: apply no discount at all (full price).
+    - discountRate is a number: apply that specific discount.
+
+Tasks:
+a) Define a module-level MISSING sentinel using object().
+b) Implement applyDiscount(productPrice, discountRate=MISSING) that handles all three cases described above.
+c) Call the function three times to demonstrate each case:
+   - applyDiscount(100) should apply 10 percent and print the discounted price.
+   - applyDiscount(100, None) should apply no discount and print the full price.
+   - applyDiscount(100, 0.25) should apply 25 percent and print the discounted price.
+d) In a comment, explain why using None as the default instead of MISSING would make case one and case two indistinguishable.
+
+---
+
+Exercise 4: Custom Class with __bool__ for a Domain Object
+
+You are building an inventory management system. Implement a class named ShoppingCart that models a customer's cart.
+
+Requirements:
+a) The class must store cart items as a list named itemList internally.
+b) Implement an addItem method that accepts an itemName string and appends it to itemList.
+c) Implement a removeItem method that accepts an itemName string and removes it from itemList if present. If the item is not found, print a message saying the item was not in the cart.
+d) Implement __len__ to return the number of items currently in itemList.
+e) Implement __bool__ to return True if the cart has at least one item and False if the cart is empty.
+f) Write a checkoutProcess function that accepts a ShoppingCart instance and:
+   - If the cart is falsy (empty), prints "Cart is empty. Nothing to check out."
+   - If the cart is truthy (has items), prints "Processing checkout for N items." where N is the length of the cart.
+g) Demonstrate the following sequence:
+   - Create an empty cart and call checkoutProcess on it.
+   - Add three items to the cart.
+   - Call checkoutProcess again.
+   - Remove all three items one by one.
+   - Call checkoutProcess a final time to confirm the empty branch triggers again.

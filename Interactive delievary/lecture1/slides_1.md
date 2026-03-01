@@ -1,21 +1,30 @@
+Slide 0
+Title: Welcome to Advanced Python
+
+Point 1: Python is central to industry: web, data, DevOps, ML, scripting.
+
+Point 2: This course builds from the data model to concurrency, step by step.
+
+Point 3: We start with how Python syntax connects to objects: the Data Model.
+
 Slide 1
 Title: Python as a Framework
 
 Point 1: Python enables syntax participation through special methods.
 
-Point 2: "len" of "object_instance" maps to "object_instance.len"
+Point 2: *len* of *object_instance* maps to *object_instance*.*len*
 
-Point 3: A for loop over an object maps to "iter"
+Point 3: A for loop over an object maps to *iter*
 
-Point 4: The "in" keyword maps to "contains"
+Point 4: The *in* keyword maps to *contains*
 
 Slide 2
 Title: -
-Point 1: If a class implements "len", "getitem", "contains", and "iter", the object can behave like a native container.
+Point 1: If a class implements *len*, *getitem*, *contains*, and *iter*, the object can behave like a native container.
 
 Slide 3
 Title: -
-Point 1: Operators map to special dunder methods. For example, addition maps to "add".
+Point 1: Operators map to special dunder methods. For example, addition maps to *add*.
 
 Slide 4
 Title: -
@@ -23,7 +32,7 @@ Point 1: Behavior matters more than type. Objects are accepted based on the meth
 
 Slide 5
 Title: -
-Point 1: Indexing is enabled through "getitem", allowing objects to compute values lazily when accessed by index.
+Point 1: Indexing is enabled through *getitem*, allowing objects to compute values lazily when accessed by index.
 
 Slide 6
 Title: -

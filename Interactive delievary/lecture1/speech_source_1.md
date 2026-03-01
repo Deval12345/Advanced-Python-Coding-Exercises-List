@@ -1,5 +1,9 @@
 # Python Data Model Magic Dunder Methods
 
+## Course Opening (Lecture 1)
+
+Welcome to Advanced Python. Python is crucial in almost every industrial application: web backends, data pipelines, DevOps, machine learning, and scripting. What makes it so widely used is not just readability but a consistent object model and a clear way to extend the language. This course builds that picture step by step, from how Python syntax really works to how we use concurrency in practice. We start at the foundation: the Python Data Model.
+
 ## Lesson Opening
 
 Alright everyone, let us get started.

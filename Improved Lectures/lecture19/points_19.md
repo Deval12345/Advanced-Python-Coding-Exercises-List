@@ -1,0 +1,27 @@
+# Key Points — Lecture 19: Threading for I/O-Bound Work
+
+---
+
+- **GIL release during I/O**: The Global Interpreter Lock is released whenever a thread performs a blocking I/O operation — such as reading from a socket, waiting on a file, or calling `time.sleep`. This is why threading speeds up I/O-bound work: while one thread waits for a response from a server, other threads can run Python code or start their own I/O operations. The GIL does not help CPU-bound work because it is held continuously during pure Python computation.
+
+- **ThreadPoolExecutor**: The high-level interface in `concurrent.futures` for managing a pool of worker threads. You submit callables to it with `executor.submit(fn, *args)`, which immediately returns a `Future` without blocking. The pool manages thread creation, reuse, and teardown. Using it as a context manager (`with ThreadPoolExecutor(...) as executor:`) guarantees all threads are joined before the block exits — preventing silent data loss if the program exits before workers finish.
+
+- **Future objects**: `executor.submit()` returns a `Future`, which is a handle to a computation that may not have finished yet. You can call `future.result()` to block until the value is ready and retrieve it, or to re-raise any exception the worker raised. Futures decouple the act of scheduling work from the act of collecting results.
+
+- **executor.map() vs as_completed()**: `executor.map(fn, iterable)` submits all items and returns results in the original submission order, blocking at each result until it is ready — useful when order matters and you want a clean iterator. `as_completed(futures)` yields futures in the order they finish — useful when you want to act on results immediately as they arrive, or when tasks have very different durations and you do not want fast tasks to wait behind slow ones.
+
+- **max_workers sizing for I/O-bound work**: Unlike CPU-bound work (where `max_workers` should match `cpu_count`), I/O-bound threads spend most of their time waiting and not running Python. This means you can profitably use far more threads than CPU cores. The standard library's own recommendation is `min(32, cpu_count + 4)` as a conservative default. Too few threads leaves I/O capacity unused; too many threads causes overhead from context switching and memory for thread stacks.
+
+- **Race conditions**: A race condition occurs when two or more threads read and write shared state without coordination, and the final result depends on the order in which the OS schedules the threads. The `+=` operator is not atomic — it compiles to at least three bytecode instructions (load the value, add to it, store the result). The OS can interrupt a thread between any two of these, allowing another thread to read a stale value. The result is lost updates, and the bug is often intermittent and hard to reproduce.
+
+- **threading.Lock**: A mutual exclusion primitive that allows only one thread at a time to hold it. All other threads that call `lock.acquire()` (or enter a `with lock:` block) will block until the current holder calls `lock.release()`. Always use `Lock` as a context manager with `with lock:` — this guarantees the lock is released even if an exception is raised inside the block, preventing deadlocks from uncaught errors.
+
+- **Critical sections**: The block of code protected by a lock is called a critical section. It should be kept as small as possible — only the code that reads or writes shared state. Holding a lock for longer than necessary reduces concurrency because other threads are forced to wait even when they could be doing unrelated work.
+
+- **threading.Queue**: A thread-safe FIFO queue from the `queue` module. Its `put()` and `get()` methods are internally synchronized — you do not need a separate lock to use them correctly. Setting `maxsize` applies backpressure by blocking the producer when the queue is full, which prevents memory growth if consumers are slower than the producer. `task_done()` pairs with `join()` to allow a caller to wait until all queued items have been fully processed.
+
+- **Producer-consumer pattern**: A concurrency design where one or more producer threads generate work items and place them on a shared queue, and one or more consumer threads remove items and process them. The queue acts as a buffer that decouples production speed from consumption speed. This pattern naturally handles bursty workloads and allows independent scaling of producers and consumers.
+
+- **Sentinel pattern for shutdown**: When a producer is done generating work, it signals consumers to stop by placing a sentinel value — typically `None` — onto the queue. Each consumer, upon receiving the sentinel, exits its loop. With multiple consumers, the sentinel must be re-put onto the queue before the consumer exits so that the remaining consumers also receive it. This fan-out approach cleanly shuts down any number of consumers with a single sentinel from the producer.
+
+- **When to choose threads vs processes**: Threading is the right tool when the bottleneck is I/O — network requests, disk reads, database calls, subprocess waits. For CPU-bound work (number crunching, image processing, parsing large files), the GIL prevents threads from running in parallel and `multiprocessing` or `ProcessPoolExecutor` should be used instead. Threading has lower overhead than multiprocessing because threads share memory and do not need to serialize data to pass it between workers.

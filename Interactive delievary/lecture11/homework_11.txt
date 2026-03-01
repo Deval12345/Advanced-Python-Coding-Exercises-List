@@ -1,0 +1,5 @@
+Homework: I/O vs CPU and GIL
+
+1. Write a short script that does a CPU-bound task (e.g. sum of square roots for a large range) in one thread and time it; then run the same task in two threads and time it; observe that total time is similar (GIL).
+2. Simulate I/O-bound work with time.sleep in two threads; start both, join both, and show that total elapsed time is roughly the max of the two sleeps, not the sum (overlap).
+3. In one sentence, explain to a colleague when to use threads and when to use multiprocessing in Python.

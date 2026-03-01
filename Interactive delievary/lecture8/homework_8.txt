@@ -1,0 +1,5 @@
+Homework: EAFP and Exception Model
+
+1. Write a function safe_divide(a, b) that returns a/b or None if b is zero or if any exception occurs; use a single try/except.
+2. Implement parse_config_line(line) that returns a (key, value) tuple for lines like "name=Alice"; return None for malformed lines; use EAFP (try split and indexing, catch exceptions).
+3. Real-world: Process a list of API response dicts; each may have "id" and "status". Build a list of (id, status) for valid items and log "Skipping invalid item" for any that raise KeyError or have invalid types. Use one loop with try/except.

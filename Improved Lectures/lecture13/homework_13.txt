@@ -1,0 +1,66 @@
+Lecture 13 Homework — Descriptors Part 1: The Descriptor Protocol and Reusable Attribute Validation
+
+---
+
+Exercise 1 — NotEmpty String Validator
+
+Task:
+Write a descriptor class called NotEmpty that validates string attributes. The descriptor should ensure that assigned values are strings and that they are not empty or whitespace-only after stripping. Apply it to a class called Employee that has name, department, and jobTitle as validated attributes. The Employee class should also have a salary attribute validated by a separate PositiveNumber descriptor (from the lecture examples).
+
+Requirements:
+- Implement __set_name__ so the descriptor stores its own attribute name automatically
+- Implement __get__ with the instance is None check returning self for class-level access
+- Implement __set__ that raises TypeError if the value is not a str, and ValueError if the stripped value is empty
+- Store the cleaned value (stripped of leading and trailing whitespace) in the instance __dict__
+- The Employee class must use NotEmpty() for name, department, and jobTitle
+- The Employee class must use PositiveNumber() for salary
+- Test all four attributes with valid values and demonstrate that each validator raises the correct exception for invalid input
+- Print the descriptor object itself by accessing Employee.name (class-level) to confirm the instance is None pattern works
+
+
+Exercise 2 — Enum-Constrained Descriptor
+
+Task:
+Write a descriptor class called OneOf that enforces that an attribute's value must be one of a predefined set of allowed values. The constructor should accept any number of positional arguments as the allowed values. Use it to build a NetworkConfig class with protocol constrained to 'tcp', 'udp', or 'icmp', and status constrained to 'active', 'inactive', or 'maintenance'.
+
+Requirements:
+- Accept allowed values as *args in the constructor and store them as a frozenset
+- Implement __set_name__ to store the attribute name
+- Implement __get__ with the instance is None guard
+- Implement __set__ that raises ValueError with a message listing the attribute name, the rejected value, and the full set of allowed values
+- Apply OneOf to at least two attributes in NetworkConfig
+- NetworkConfig.__init__ should accept and set both protocol and status
+- Test with valid values for both attributes, then attempt an invalid protocol and an invalid status, catching and printing each ValueError
+- Demonstrate that the same OneOf descriptor class is reused for both attributes with different allowed value sets
+
+
+Exercise 3 — Validated Data Record with Multiple Descriptor Types
+
+Task:
+Build a complete data record class called WeatherStation that uses at least three different descriptor classes. The station should track stationId (a non-empty string), latitude (a float between -90.0 and 90.0), longitude (a float between -180.0 and 180.0), elevationMeters (a positive number, can be zero), and windSpeedKph (a non-negative float, zero is allowed). Reuse or adapt the RangeValidated and PositiveNumber descriptors from the lecture rather than rewriting validation from scratch.
+
+Requirements:
+- Write a NonNegativeNumber descriptor that allows zero but rejects negative values and non-numeric types
+- Reuse RangeValidated for latitude and longitude with the appropriate bounds
+- Reuse NotEmpty (from Exercise 1) or write a simple StringField for stationId
+- All five attributes on WeatherStation must be validated by a descriptor
+- WeatherStation.__init__ should accept all five values and set them through the descriptors
+- Create two WeatherStation instances with different valid data and print their values
+- Test at least two invalid assignments (one per descriptor type) and catch the raised exceptions
+- Print the __dict__ of a WeatherStation instance to show that all five values are stored in the instance dictionary under their correct names
+
+
+Exercise 4 — Audit-Logging Descriptor
+
+Task:
+Write a descriptor class called Audited that behaves like a regular type-checked storage descriptor, but additionally logs every read and every write to a class-level audit log. The descriptor should store its log in a list that is an attribute of the descriptor instance itself (not the data instance), so the log is shared across all instances of the class for that attribute. Apply it to a BankAccount class that has owner (a string) and balance (a float, any value including negative to allow overdraft) as audited attributes.
+
+Requirements:
+- In __init__, create an empty list called auditLog on the descriptor instance
+- In __get__, when instance is not None, append an entry to auditLog recording the attribute name, the instance id (using Python's built-in id() function), the string 'READ', and the value being returned
+- In __set__, append an entry recording the attribute name, the instance id, the string 'WRITE', and the new value before storing it
+- BankAccount.__init__ should accept owner and balance and set them through the descriptors
+- Create two BankAccount instances, perform several reads and writes on each, then print the full audit log for both the owner and balance descriptors using BankAccount.owner.auditLog and BankAccount.balance.auditLog
+- The audit log must correctly track which instance performed each operation by recording the id
+- Include a brief comment in your code explaining why the audit log belongs to the descriptor instance rather than to the data instance
+

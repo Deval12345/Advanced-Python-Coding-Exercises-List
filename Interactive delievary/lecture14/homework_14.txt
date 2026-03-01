@@ -1,0 +1,5 @@
+Homework: Consolidation (optional)
+
+1. List three industrial use cases (e.g. web API, ETL pipeline, DevOps script) and for each name at least two course concepts that apply.
+2. Sketch a one-page design for your capstone pipeline: which class uses the data model, where you will use a context manager, and where EAFP and iteration fit.
+3. No coding required; this is preparation for the capstone.

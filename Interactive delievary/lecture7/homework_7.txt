@@ -1,0 +1,5 @@
+Homework: Context Managers
+
+1. Implement a Timer context manager that stores the elapsed time in an attribute so that after "with Timer() as t:" you can read "t.elapsed".
+2. Write a Suppress(context_manager, *exception_types) that only suppresses the listed exception types in __exit__; others propagate.
+3. Real-world: Build a small DatabaseSession context manager: __enter__ prints "Session started" and returns self; __exit__ prints "Session ended" and on exception prints "Rollback". Use it in a with block that simulates one successful and one failing operation.

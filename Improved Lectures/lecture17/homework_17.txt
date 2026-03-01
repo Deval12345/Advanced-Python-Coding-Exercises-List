@@ -1,0 +1,74 @@
+Homework: Object Memory Layout & __slots__ — Lightweight Objects at Scale
+
+Exercise 1 — Measure the Real Memory Cost of __dict__
+
+Write two versions of a TradeOrder class that stores five fields: orderId (str), symbol (str), quantity (int), price (float), and side (str). One version uses a normal Python class with __dict__. The other version adds __slots__ = ('orderId', 'symbol', 'quantity', 'price', 'side').
+
+Create one million instances of each using a list comprehension. Use tracemalloc to measure the total memory allocation for each batch. Report the total kilobytes used by each, the savings in kilobytes, and the ratio.
+
+Requirements:
+- Use tracemalloc.start(), take_snapshot(), and tracemalloc.stop() around each batch
+- Sum all stat.size values from snapshot.statistics('lineno') to get the total
+- Print the savings and ratio clearly
+- Run the measurement at least twice to confirm it is stable
+- Add a comment explaining what the dominant allocation source is for the dict version
+
+
+Exercise 2 — Correct Slots Inheritance
+
+This exercise is about avoiding the most common slots mistake: forgetting __slots__ in a subclass.
+
+Write three classes:
+(a) BaseEvent — a slotted class with eventId and timestamp
+(b) NetworkEvent — a correct subclass of BaseEvent that adds __slots__ with source and destination
+(c) BrokenNetworkEvent — a subclass of BaseEvent that forgets __slots__ (uses normal class body)
+
+For each, create an instance and:
+- Print sys.getsizeof(instance)
+- Print whether the instance has __dict__ using hasattr
+- If it has __dict__, print sys.getsizeof(instance.__dict__) and explain what went wrong
+
+Then try adding a new attribute to each instance and observe which ones accept it and which raise AttributeError.
+
+Requirements:
+- Use sys.getsizeof for all size measurements
+- Your printed output must clearly show the size difference between the correct and broken subclass
+- Add comments explaining why BrokenNetworkEvent re-introduces __dict__
+
+
+Exercise 3 — __slots__ with the __dict__ Escape Hatch
+
+Write a FlexibleRecord class that declares __slots__ = ('recordId', 'category', 'value', '__dict__'). The three named slots get fast fixed-offset storage. The __dict__ slot allows dynamic attribute assignment.
+
+Demonstrate:
+- Creating a FlexibleRecord and accessing the three fixed slots normally
+- Adding a dynamic attribute not in the slots list (e.g., metadata = "extra info") and confirming it works
+- Printing sys.getsizeof(instance) and sys.getsizeof(instance.__dict__) to show the cost of keeping __dict__
+- Comparing the size to a fully slotted version (without __dict__ in slots) and to a fully dict version
+
+Write a comment explaining when this middle-ground approach is the right engineering choice.
+
+Requirements:
+- Show all three variants: fully slotted, slots-plus-dict, and normal class
+- Demonstrate that fully slotted instances reject dynamic attributes with AttributeError
+- Demonstrate that the slots-plus-dict version accepts them
+
+
+Exercise 4 — Profile a Real Pipeline: Before and After
+
+You are building a data pipeline that processes GPS waypoints. Each waypoint has: lat (float), lon (float), altitude (float), speed (float), and heading (float).
+
+Write a GpsWaypointDict class (no slots) and a GpsWaypointSlot class (with slots). Write a function called simulatePipeline that takes a class and a count, creates count instances, computes a "validation pass" (check that lat is between -90 and 90, lon between -180 and 180), and returns the list of valid waypoints.
+
+Measure and compare:
+(a) Memory usage via tracemalloc for 500,000 waypoints each
+(b) Time via time.perf_counter for creating 500,000 waypoints each
+
+Print a summary table with: class name, count, memory KB, creation time in ms.
+
+Requirements:
+- Use tracemalloc for memory and time.perf_counter for timing
+- The validation logic must be identical for both classes
+- Summarize in a table with at least 4 columns
+- Add a comment explaining which workloads would see the most benefit from the slotted version
+
