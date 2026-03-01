@@ -174,3 +174,95 @@ Without `__slots__`, every Python object instance carries a `__dict__` — a has
 
 **INDUSTRY IMPACT:**
 `__slots__` is used throughout Python's high-performance infrastructure. NumPy's Python-level objects use slots. SymPy uses them for expression tree nodes (which are created billions of times in symbolic computations). CPython's own internal objects use the C equivalent. Protocol Buffer generated Python classes (from `protoc`) use `__slots__`. SQLAlchemy uses them for ORM column descriptors. Any Python library that creates millions of small objects — parsers, AST nodes, pipeline records, event objects — uses `__slots__` to control memory usage.
+
+---
+
+**EXAMPLE 3.1 — MetricsCollector with __slots__ and Memory Verification**
+
+```python
+# Example 37.3
+import sys
+import time
+import tracemalloc
+from collections import deque
+
+class MetricsCollectorDict:
+    def __init__(self, stageName):
+        self.stageName = stageName
+        self.count = 0
+        self.totalMs = 0.0
+        self.recentLatencies = deque(maxlen=100)
+
+    def record(self, latencyMs):
+        self.count += 1
+        self.totalMs += latencyMs
+        self.recentLatencies.append(latencyMs)
+
+    def report(self):
+        mean = self.totalMs / self.count if self.count > 0 else 0
+        return f"[{self.stageName}] count={self.count} meanMs={mean:.3f}"
+
+class MetricsCollectorSlots:
+    __slots__ = ("stageName", "count", "totalMs", "recentLatencies")
+
+    def __init__(self, stageName):
+        self.stageName = stageName
+        self.count = 0
+        self.totalMs = 0.0
+        self.recentLatencies = deque(maxlen=100)
+
+    def record(self, latencyMs):
+        self.count += 1
+        self.totalMs += latencyMs
+        self.recentLatencies.append(latencyMs)
+
+    def report(self):
+        mean = self.totalMs / self.count if self.count > 0 else 0
+        return f"[{self.stageName}] count={self.count} meanMs={mean:.3f}"
+
+if __name__ == "__main__":
+    N = 10000
+    tracemalloc.start()
+
+    snapshot1 = tracemalloc.take_snapshot()
+    dictCollectors = [MetricsCollectorDict(f"stage_{i}") for i in range(N)]
+    snapshot2 = tracemalloc.take_snapshot()
+
+    slotsCollectors = [MetricsCollectorSlots(f"stage_{i}") for i in range(N)]
+    snapshot3 = tracemalloc.take_snapshot()
+
+    dictSize = sys.getsizeof(dictCollectors[0]) + sys.getsizeof(dictCollectors[0].__dict__)
+    slotsSize = sys.getsizeof(slotsCollectors[0])
+
+    stats2 = snapshot2.compare_to(snapshot1, "lineno")
+    stats3 = snapshot3.compare_to(snapshot2, "lineno")
+
+    dictMem = sum(s.size_diff for s in stats2) / 1024
+    slotsMem = sum(s.size_diff for s in stats3) / 1024
+
+    print(f"Dict collector: ~{dictSize} bytes/instance, {dictMem:.1f} KB for {N} instances")
+    print(f"Slots collector: ~{slotsSize} bytes/instance, {slotsMem:.1f} KB for {N} instances")
+    print(f"Memory reduction: {dictMem/slotsMem:.1f}x fewer KB with __slots__")
+    tracemalloc.stop()
+```
+
+**NARRATION:**
+`__slots__ = ("stageName", "count", "totalMs", "recentLatencies")` — Declares exactly which attributes this class can have. Python creates a C-level slot descriptor for each name and omits the per-instance `__dict__`. Any attempt to set an undeclared attribute raises `AttributeError` immediately — catching attribute-name typos at the point of error rather than silently creating new attributes.
+
+`sys.getsizeof(dictCollectors[0]) + sys.getsizeof(dictCollectors[0].__dict__)` — A dict-based instance's memory is the base object size plus the `__dict__` hash table. The `__dict__` itself typically uses 200–360 bytes even for a sparse dict.
+
+`sys.getsizeof(slotsCollectors[0])` — A slots-based instance has no `__dict__`. All attributes are in fixed-size C-level slot arrays. The total size is significantly smaller.
+
+`tracemalloc.take_snapshot()` — Python's built-in memory profiler records all allocation sites. Comparing snapshots before and after creating N objects gives the actual memory consumed by those objects.
+
+`snapshot2.compare_to(snapshot1, "lineno")` — Returns a list of `StatisticDiff` objects showing where allocations occurred between the two snapshots. Summing `size_diff` gives total bytes allocated.
+
+---
+
+## CONCEPT 4.1 — Final Takeaway: Lecture 37
+
+Stage 4 of the big project adds measurability to the pipeline. The tools: `cProfile` for offline development-time hotspot identification — run it once, read the report, fix the bottleneck. The `@measuredStage` decorator for continuous production-time metrics — wraps generator methods, measures per-record latency and total throughput, invisible to callers. `MetricsCollector` with `__slots__` for memory-efficient accumulation of per-stage statistics across millions of records.
+
+The discipline: measure before you optimize; measure after you fix; keep measurement infrastructure itself lean. The combination of offline profiling and continuous production metrics gives you visibility at every timescale: cProfile for deep diagnostics when something is wrong, the decorator metrics for the real-time dashboard that tells you when something is going wrong.
+
+In the next stage (Lecture 38), we add caching and memory discipline — TTL-based caching for expensive repeated computations, `tracemalloc` for memory profiling, and bounded queues to prevent memory growth from overwhelming the pipeline under load.

@@ -1,0 +1,159 @@
+Homework — Lecture 31: Concurrency Architecture Patterns
+
+===============================================================
+EXERCISE 1 — Three-Tier Request Handler with Real Workloads
+===============================================================
+
+Build a three-tier concurrent request handler that uses asyncio, thread pool, and process pool
+for their correct workload types, and measure the performance improvement of each tier.
+
+Requirements:
+
+1. Write a module-level function `parseCsvChunk(chunk)` that accepts a list of comma-separated
+   strings, parses each into a dictionary with keys ["id", "value", "timestamp"], and returns a
+   list of dictionaries. Add `time.sleep(0.0001)` per record to simulate CPU-bound parsing work.
+   This function will run in the process pool.
+
+2. Write a synchronous function `fetchMetadataBlocking(recordId)` that sleeps for
+   `random.uniform(0.05, 0.1)` seconds and returns `{"id": recordId, "label": f"item_{recordId}"}`.
+   This simulates a legacy synchronous metadata service. It will run in the thread pool.
+
+3. Write an async function `handleRequest(requestId, threadPool, processPool)` that:
+   a. Generates 20 CSV strings like "1,45.3,2024-01-01" (use random floats)
+   b. Submits the list to the process pool via `loop.run_in_executor(processPool, parseCsvChunk, chunk)`
+   c. Awaits the parse result
+   d. Submits the first parsed record's id to the thread pool via `loop.run_in_executor(threadPool, fetchMetadataBlocking, id)`
+   e. Awaits the metadata result
+   f. Returns a combined result dict with requestId, parse count, and metadata
+
+4. In an async `main()`, run 10 simultaneous requests using `asyncio.gather`.
+   Use `ThreadPoolExecutor(max_workers=10)` and `ProcessPoolExecutor(max_workers=4)`.
+   Measure and print total elapsed time.
+
+5. For comparison, write a synchronous version that handles 10 requests sequentially —
+   calling parseCsvChunk and fetchMetadataBlocking directly without any executor.
+   Measure and print its elapsed time. Print the speedup ratio: synchronous_time / async_time.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Fan-Out Query with Adaptive Timeout
+===============================================================
+
+Build a fan-out query system with adaptive timeout logic that adjusts the deadline based
+on observed shard latencies.
+
+Requirements:
+
+1. Write an async function `queryShard(shardId, query)` that simulates a shard query:
+   base latency is 100ms plus a `random.expovariate(5)` seconds spike (exponential distribution
+   with mean 0.2s). Randomly fail with probability 0.1 (raise `RuntimeError("shard error")`).
+   Return `{"shardId": shardId, "records": [f"r_{shardId}_{i}" for i in range(random.randint(3, 8))]}`.
+
+2. Write a `LatencyTracker` class that maintains a sliding window of the last 20 observed
+   shard latencies (as a `collections.deque(maxlen=20)`). Provide a method
+   `suggestedTimeout()` that returns the 90th percentile of observed latencies times 2.0,
+   or 0.5 seconds if fewer than 5 observations exist. Update after each fan-out query with
+   the latencies of responding shards.
+
+3. Write an async function `fanOutWithAdaptiveTimeout(query, numShards, tracker)` that:
+   a. Gets the suggested timeout from the tracker
+   b. Creates tasks for all numShards shards
+   c. Uses `asyncio.wait(tasks, timeout=suggestedTimeout)` to collect results
+   d. Handles exceptions from failed shards (wraps task.result() in try/except)
+   e. Cancels pending tasks cleanly
+   f. Updates the tracker with latencies of responding shards
+   g. Returns a result dict with: query, shardsResponded, shardsTimedOut, shardsFailed,
+      totalRecords, usedTimeout (seconds)
+
+4. Run 15 consecutive fan-out queries against 6 shards and print the result of each.
+   Show how the suggested timeout adapts over the 15 queries as the tracker accumulates
+   latency history. The first few queries use the default 0.5s; later queries adapt to
+   the observed distribution.
+
+5. Print a final summary: min/max/mean shards responded across 15 queries, total records
+   accumulated, and the final suggested timeout from the tracker.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Circuit Breaker Implementation
+===============================================================
+
+Implement a full three-state circuit breaker class and test it against a flaky async service.
+
+Requirements:
+
+1. Write a class `AsyncCircuitBreaker` with parameters: `failureThreshold` (int, default 3),
+   `resetTimeoutSeconds` (float, default 2.0), and `probeTimeoutSeconds` (float, default 0.5).
+   State is one of: "closed", "open", "half_open". Track `failureCount`, `lastFailureTime`,
+   and `successCountInHalfOpen`.
+
+2. Implement an async method `call(coroutineFn, *args, **kwargs)` on the breaker:
+   - If state is "open": check if `resetTimeoutSeconds` has elapsed since `lastFailureTime`.
+     If yes, set state to "half_open" and allow the call. If no, raise `CircuitOpenError`.
+   - If state is "half_open": allow the call. On success, set state to "closed", reset
+     failureCount. On failure, set state to "open", record lastFailureTime, raise.
+   - If state is "closed": allow the call. On success, reset failureCount. On failure,
+     increment failureCount. If failureCount >= failureThreshold, set state to "open",
+     record lastFailureTime. Raise the original exception.
+
+3. Write a custom exception `CircuitOpenError(Exception)` and a class `FlakyAsyncService`
+   with an async method `fetch(requestId)` that:
+   - Works normally (returns a dict) 60% of the time
+   - Raises `RuntimeError("service degraded")` 30% of the time
+   - Hangs for 3 seconds then raises `asyncio.TimeoutError` 10% of the time (simulate with
+     `await asyncio.sleep(3)` then raise)
+
+4. Write a test harness that makes 30 sequential calls through the breaker to `FlakyAsyncService`.
+   Use `asyncio.wait_for(breaker.call(service.fetch, i), timeout=1.0)` to add a 1-second
+   outer timeout. For each call, print the outcome: success, service error, circuit open,
+   or timeout. Also print the current circuit state after each call.
+
+5. Measure: count successes, service errors, circuit-open fast-fails, and timeouts across
+   the 30 calls. Print the final state of the circuit breaker and a breakdown of outcomes.
+   Show that after the circuit opens, subsequent calls fail fast (no 3-second hangs).
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Mixed-Architecture Pipeline Benchmark
+===============================================================
+
+Design and benchmark a pipeline that correctly assigns different processing stages
+to the appropriate concurrency layer and compares performance against naive approaches.
+
+Requirements:
+
+1. Define four processing stages:
+   a. `fetchSensorReading(sensorId)` — async function, awaits `asyncio.sleep(random.uniform(0.08, 0.12))`,
+      returns `{"sensorId": sensorId, "rawValue": random.gauss(50, 15)}`.
+   b. `normalizeReading(reading)` — sync CPU function, performs 5000 iterations of `math.sin` and
+      `math.cos` on the value, returns the reading dict with a "normalized" key added.
+   c. `storeReading(reading)` — sync blocking I/O function, `time.sleep(0.02)`,
+      returns `{"stored": True, "sensorId": reading["sensorId"]}`.
+   d. `aggregateResults(results)` — sync function, computes mean and std of "normalized" values,
+      returns `{"count": len(results), "mean": mean, "std": std}`.
+
+2. Write a "naive" async implementation that runs all 4 stages inline in one coroutine,
+   calling normalizeReading and storeReading directly (no executors). Run it for 12 sensors
+   with `asyncio.gather`. Measure elapsed time.
+
+3. Write a "correct architecture" implementation that:
+   - Fetches all sensor readings concurrently with asyncio (stage a)
+   - Submits all normalization work to a ProcessPoolExecutor (stage b) in a single gather
+   - Submits all storage calls to a ThreadPoolExecutor (stage c) in a single gather
+   - Calls aggregateResults directly (stage d — fast enough to run inline)
+   Run it for 12 sensors. Measure elapsed time.
+
+4. Print a comparison table: naive time vs. correct time for 12, 24, and 48 sensors.
+   Compute and display the speedup factor at each scale. Explain in comments why the
+   speedup increases with more sensors (more parallelism opportunity at each tier).
+
+5. Add a "circuit breaker" wrapper around `storeReading` (using a simplified sync version
+   of the breaker from Exercise 3 — no async required here). Make `storeReading` fail with
+   probability 0.15. After 3 consecutive failures, the breaker opens and store calls fail fast.
+   Run 5 batches of 12 sensors and report: storage successes, failures, and circuit-open
+   fast-fails per batch.
+
+No solutions provided.

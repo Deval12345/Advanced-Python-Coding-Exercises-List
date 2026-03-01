@@ -1,0 +1,182 @@
+Homework — Lecture 37: Big Project Stage 4 — Measurable Pipeline (Profiling and Metrics)
+
+===============================================================
+EXERCISE 1 — Profile, Identify, Fix, Re-Profile
+===============================================================
+
+Apply the complete measure-optimize-remeasure cycle to a realistic data processing function
+with a hidden bottleneck.
+
+Requirements:
+
+1. Implement this exact pipeline (do not optimize yet):
+
+   def detectAnomalies(records, threshold=2.5):
+       """Flag records whose value deviates more than threshold std-devs from the window mean."""
+       results = []
+       window = []
+       for r in records:
+           window.append(r["value"])
+           if len(window) > 50:
+               window = window[1:]      # O(N) slice: creates new list every record
+           mean = sum(window) / len(window)     # O(N) every record
+           std = (sum((x - mean)**2 for x in window) / len(window)) ** 0.5
+           isAnomaly = abs(r["value"] - mean) > threshold * std
+           results.append({**r, "anomaly": isAnomaly, "zScore": abs(r["value"] - mean)})
+       return results
+
+   Generate 20,000 records as {"id": i, "value": random.gauss(50, 10)} for i in range(20000).
+   Add 200 anomalies by setting value to 150.0 at random indices.
+
+2. Profile detectAnomalies(records) using cProfile. Print the top 12 functions by cumulative
+   time. Identify which operations dominate runtime (list slicing, sum calls, or both).
+   Record the total pipeline time.
+
+3. Write an optimized version detectAnomaliesFast that:
+   - Uses collections.deque(maxlen=50) instead of list slicing
+   - Maintains a running sum and running sum-of-squares, updated incrementally:
+     runningSum += newVal - droppedVal (when full)
+     runningSumSq += newVal**2 - droppedVal**2 (when full)
+   - Computes mean = runningSum / windowSize and variance from running sums (no iteration)
+
+4. Profile detectAnomaliesFast(records) and print the top 12 functions again. Compare
+   cumulative time for the hotspot functions. Verify the output is identical (same anomaly
+   flags, same zScores to 6 decimal places) using assert.
+
+5. Measure both functions with timeit (20 repetitions each) and print: slow time (ms),
+   fast time (ms), speedup factor. The speedup should be substantial (4-20×) because
+   the O(N²) operations are replaced by O(N) operations.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — @measuredStage with Pipeline Integration
+===============================================================
+
+Apply the @measuredStage decorator to a three-stage generator pipeline and analyze
+the per-stage metrics to identify the bottleneck.
+
+Requirements:
+
+1. Implement three pipeline stages as classes with generator methods:
+
+   class ThresholdFilter:
+       @measuredStage("ThresholdFilter")
+       def process(self, inputStream):
+           for r in inputStream:
+               if 10.0 <= r["value"] <= 90.0:
+                   yield r
+
+   class WindowNormalizer:
+       @measuredStage("WindowNormalizer")
+       def process(self, inputStream):
+           # Deliberately slow: for each record, create a fresh sorted list (O(N log N))
+           seen = []
+           for r in inputStream:
+               seen.append(r["value"])
+               localMin = min(seen)   # O(N) every record
+               localMax = max(seen)   # O(N) every record
+               span = localMax - localMin if localMax != localMin else 1
+               yield {**r, "norm": (r["value"] - localMin) / span}
+
+   class MovingAvgTransform:
+       @measuredStage("MovingAvgTransform")
+       def process(self, inputStream):
+           window = collections.deque(maxlen=20)
+           for r in inputStream:
+               window.append(r["norm"])
+               yield {**r, "movingAvg": sum(window) / len(window)}
+
+2. Implement the @measuredStage decorator exactly as shown in Example 37.2.
+   Add one enhancement: also compute and print the p95 latency (95th percentile of
+   latenciesMs list) in the final report line.
+
+3. Generate 5000 records and run the three-stage pipeline connected as:
+   source → filter.process(source) → normalizer.process(filtered) → transform.process(normalized)
+   Consume all records in a for loop.
+
+4. From the printed @measuredStage reports, identify which stage has the highest
+   meanLatencyMs. According to our lecture: high latency in a stage indicates the
+   downstream stage is slow. Trace the bottleneck to the actual slow stage.
+
+5. Fix the WindowNormalizer to use a running min and max (maintained as the window slides)
+   instead of calling min() and max() on the full seen list each time. Re-run the pipeline
+   and compare the @measuredStage reports before and after the fix. Verify the bottleneck
+   shifts or disappears.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — __slots__ and Memory Profiling
+===============================================================
+
+Demonstrate and measure the memory impact of __slots__ across different object creation patterns.
+
+Requirements:
+
+1. Define four classes representing pipeline event objects:
+   - EventDict: regular class with 6 attributes (sensorId, timestamp, value, unit, stageId, flag)
+   - EventSlots: same 6 attributes but with __slots__
+   - EventNamedTuple: typing.NamedTuple with the same 6 fields
+   - EventDataclass: @dataclass with the same 6 fields
+
+2. For each class, create 50,000 instances with realistic values (random floats, strings like
+   "S42", timestamps). Use tracemalloc.take_snapshot() before and after creation to measure
+   actual memory allocated. Print: class name, bytes/instance (total_diff / 50000),
+   total KB for 50,000 instances.
+
+3. Use sys.getsizeof() to measure the shallow object size for each class type. Also measure
+   sys.getsizeof(instance.__dict__) where applicable (will fail for NamedTuple and Slots).
+   Print a breakdown: base object + __dict__ overhead for Dict class.
+
+4. Benchmark attribute access speed: use timeit to measure 1,000,000 reads of obj.value
+   for each class type. Print reads/second. Slots and NamedTuple should be fastest; Dict
+   with __dict__ should be slowest.
+
+5. Write a function findAttributeTypo() that demonstrates the typo-safety difference:
+   - Create an EventDict instance and set `instance.vlaue = 99` (typo). Print whether
+     the attribute was silently created or an error was raised.
+   - Create an EventSlots instance and try `instance.vlaue = 99` (same typo). Print the
+     outcome. The __slots__ version must raise AttributeError.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Comprehensive Pipeline Measurement Dashboard
+===============================================================
+
+Build a complete measurement dashboard that combines cProfile, @measuredStage,
+and tracemalloc into a unified observability report.
+
+Requirements:
+
+1. Implement a PipelineMeasurementContext class using context manager protocol
+   (__enter__ / __exit__) that:
+   - On enter: starts tracemalloc, creates a cProfile.Profile(), calls profiler.enable(),
+     records start time and start memory snapshot
+   - On exit: calls profiler.disable(), takes an end memory snapshot, stops tracemalloc
+   - Provides properties: elapsedMs (total wall time), topHotspotsStr (top 5 functions
+     from cProfile as a formatted string), memoryAllocatedKb (net KB allocated during
+     the context), peakMemoryKb (peak memory usage during the context from tracemalloc)
+
+2. Define a complete 4-stage pipeline (ThresholdFilter, Normalizer, FeatureComputer,
+   AlertDetector) as generator-based classes, each decorated with @measuredStage.
+
+3. Wrap a full pipeline run (10,000 records) in PipelineMeasurementContext and print:
+   - Total elapsed time (ms)
+   - Top 5 cProfile hotspots
+   - Net memory allocated during the run (KB)
+   - Peak memory during the run (KB)
+   - Per-stage metrics from @measuredStage (printed by the decorator automatically)
+
+4. Run the pipeline 5 times and compute: mean elapsed time, mean net memory, and
+   whether the per-stage throughput (from @measuredStage) is consistent across runs
+   (std < 10% of mean). Print a stability report.
+
+5. Introduce a controlled memory leak: in the AlertDetector, instead of yielding the
+   record, also append it to a class-level list `AlertDetector.allAlerts = []`. Run
+   the pipeline 5 times and observe how net memory allocation grows across runs (each
+   run adds to the shared list). Print the net memory for each run and confirm it
+   grows linearly. Then fix the leak and re-run to confirm memory stabilizes.
+
+No solutions provided.

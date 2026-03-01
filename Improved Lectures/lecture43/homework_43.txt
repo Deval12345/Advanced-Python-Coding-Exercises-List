@@ -1,0 +1,197 @@
+Homework — Lecture 43: Big Project Stage 8 Part 3 — Advanced Internals: Generics, Type-Safe Containers, and Final Assembly
+
+===============================================================
+EXERCISE 1 — TypedDict Schema Hierarchy and Type-Safe Stage Contracts
+===============================================================
+
+Design a TypedDict schema hierarchy for the full analytics pipeline and
+use it to make every stage's transformation explicit and verifiable.
+
+Requirements:
+
+1. Define a TypedDict hierarchy for pipeline records:
+   - `RawRecord`: sensorId (str), timestamp (float), rawValue (float), unit (str)
+   - `FilteredRecord(RawRecord)`: passed_threshold (bool)
+   - `NormalizedRecord(FilteredRecord)`: normalized (float), windowMin (float), windowMax (float)
+   - `FeatureRecord(NormalizedRecord)`: movingAvg (float), derivative (float)
+   - `AlertRecord(FeatureRecord)`: alertLevel (str), alertMessage (str)
+
+2. Define TypeVar and Generic pipeline stage types:
+   - `RecordT = TypeVar("RecordT", bound=RawRecord)`
+   - A generic `PipelineStage(Generic[InputT, OutputT])` base class where
+     `InputT` and `OutputT` are TypeVars, and `transform(stream: Iterator[InputT])
+     -> Iterator[OutputT]` is the abstract method
+   - Make each concrete stage class carry its exact input and output TypedDict types:
+     e.g., `ThresholdFilter(PipelineStage[RawRecord, FilteredRecord])`
+
+3. Implement four concrete stages with correct Generic signatures:
+   - `ThresholdFilter(PipelineStage[RawRecord, FilteredRecord])`: adds passed_threshold
+   - `WindowNormalizer(PipelineStage[FilteredRecord, NormalizedRecord])`: adds normalized fields
+   - `FeatureExtractor(PipelineStage[NormalizedRecord, FeatureRecord])`: adds movingAvg, derivative
+   - `AlertClassifier(PipelineStage[FeatureRecord, AlertRecord])`: adds alertLevel and alertMessage
+     (classify: "LOW" if normalized < 0.3, "MEDIUM" if < 0.7, "HIGH" otherwise)
+
+4. Write a `buildTypedPipeline(stages)` function that:
+   - Accepts the four stages in order and chains their transform() generators
+   - Validates at runtime that the output type annotation of stage N matches
+     the input type annotation of stage N+1 (using `get_type_hints()` and
+     checking that the output TypedDict class is a subclass of the input TypedDict class)
+   - Raises a `TypeError` with a descriptive message if stages are connected out of order
+
+5. Generate 1000 RawRecord dicts and run them through the full typed pipeline.
+   For every 100th record, print: sensorId, normalized value, movingAvg,
+   derivative, alertLevel. Confirm that all AlertRecord fields are present
+   in every output record. This demonstrates that TypedDict schema inheritance
+   gives you zero-cost runtime validation alongside the static guarantee.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Self-Building Registry with mypy-Compatible Protocol Checking
+===============================================================
+
+Build the final version of the stage registry that integrates __init_subclass__
+auto-registration with Protocol structural type checking.
+
+Requirements:
+
+1. Define a `PipelineStageProtocol` using `typing.Protocol`:
+   - Required method: `transform(self, inputStream: Iterator[dict]) -> Iterator[dict]`
+   - Required class attribute: `STAGE_NAME: str`
+   - Required class attribute: `STAGE_VERSION: str` (semantic version string)
+   - `@classmethod buildFromConfig(cls, config: dict) -> "PipelineStageProtocol"`
+
+2. Define a `StageRegistry` class (module-level singleton) using `__init_subclass__`:
+   - When a new class is defined that inherits from a registered base, automatically
+     register it under its STAGE_NAME key
+   - At registration time, check structural compatibility with PipelineStageProtocol
+     using `isinstance(cls, type)` and `hasattr` checks — raise `RegistrationError`
+     if the class is missing any required Protocol attribute or method
+   - Provide `getStage(name)` to look up a registered class by STAGE_NAME
+   - Provide `listStages()` to return a dict of all registered stage names → classes
+
+3. Define four stages that inherit from the registry base class:
+   - Each has STAGE_NAME, STAGE_VERSION, a `buildFromConfig` classmethod,
+     and a `transform` generator method
+   - One stage (`VersionedFilter`) should have a configurable threshold in buildFromConfig
+
+4. Write a `buildPipelineFromConfig(configList)` function that:
+   - Accepts a list of config dicts, each with a "stage" key (the STAGE_NAME) and
+     optional parameters
+   - Looks up each stage from the registry, calls buildFromConfig with the config dict
+   - Returns a list of instantiated stage objects
+
+5. Run a full pipeline from this config list:
+   [
+     {"stage": "ThresholdFilter", "minVal": 10.0, "maxVal": 90.0},
+     {"stage": "WindowNormalizer", "windowSize": 30},
+     {"stage": "FeatureExtractor", "featureList": ["movingAvg", "derivative"]},
+     {"stage": "ConsoleSink", "limit": 5}
+   ]
+   Process 500 records. Print the registry listing (all stage names) before
+   and after adding a new stage class at runtime to show dynamic registration.
+   Attempt to register a malformed stage (missing STAGE_NAME) and confirm
+   RegistrationError is raised with a descriptive message.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Full Pipeline Integration Test with Observability Report
+===============================================================
+
+Run the complete Pluggable Analytics Engine end-to-end and validate that
+every observability subsystem produces consistent output.
+
+Requirements:
+
+1. Assemble the complete 6-layer pipeline as described in the lecture:
+   - Layer 1: Use `AutoSlotMeta`-generated record class and `SensorRecord` TypedDict
+   - Layer 2: Use `SyntheticSource` with 500 records (Gaussian noise, 10% injected anomalies)
+   - Layer 3: Chain ThresholdFilter → WindowNormalizer → FeatureExtractor → AlertClassifier
+   - Layer 4: Use `MultiSink` connecting to both a `JsonFileSink` and a `ThresholdAlertSink`
+   - Layer 5: Wrap the runner with `tracemalloc` and `time.perf_counter` measurement
+   - Layer 6: Drive the entire pipeline from a config dict via `buildPipelineFromConfig`
+
+2. After the run, collect and cross-validate metrics from three sources:
+   a. StructuredLogger: count "record_processed" events per stage
+   b. @measuredStage reports: total records processed per stage
+   c. JsonFileSink: count lines in the output JSON file
+
+   Assert that all three agree on the record count that passed through each stage.
+   Print "INTEGRATION TEST PASSED" if consistent, or list all discrepancies.
+
+3. Verify the JsonFileSink output file:
+   - Open and parse each line as JSON
+   - Assert every record contains all required AlertRecord fields
+   - Assert that alertLevel is one of {"LOW", "MEDIUM", "HIGH"}
+   - Count the distribution of alertLevel values and print a summary:
+     LOW: N records (X%), MEDIUM: N records (X%), HIGH: N records (X%)
+   - Assert the distribution is plausible (no alertLevel has 0 records if N >= 500)
+
+4. Verify the ThresholdAlertSink:
+   - It should have received all records with alertLevel == "HIGH"
+   - Compare the count from ThresholdAlertSink against the JsonFileSink count of HIGH records
+   - These must be equal. Print the result and assert equality.
+
+5. Run the pipeline three more times (total 4 runs) and verify stability:
+   - Elapsed time varies by less than 50% between runs (no run takes 2× another)
+   - Peak memory is consistent (less than 20% variation across runs)
+   - Record count through each stage is identical across all runs (deterministic filtering)
+   Print a 4-run stability table: run number, elapsed_ms, peak_memory_kb, records_through_filter.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Extend the Pipeline with a New Stage Type and Validate the Architecture
+===============================================================
+
+Add a new stage type to the fully assembled pipeline with zero changes to
+existing code, demonstrating the extensibility guarantee of the architecture.
+
+Requirements:
+
+1. Design and implement a `SmoothingTransform` stage that:
+   - STAGE_NAME = "SmoothingTransform", STAGE_VERSION = "1.0.0"
+   - Accepts `Iterator[NormalizedRecord]` and returns `Iterator[NormalizedRecord]`
+   - Applies a Savitzky-Golay-style smoothing: for each record, computes the
+     weighted average of the current record's normalized value and the last
+     3 records' normalized values with weights [0.1, 0.2, 0.3, 0.4] (oldest to newest)
+   - Adds a "smoothed" field to each output record (though for simplicity, the
+     TypedDict can be relaxed to dict here — note this as a comment)
+   - Self-registers via __init_subclass__ when defined
+
+2. Insert SmoothingTransform between WindowNormalizer and FeatureExtractor in the
+   pipeline config dict — with no changes to any other file. Run the full pipeline
+   and confirm:
+   - The new stage appears in the listStages() output
+   - The @measuredStage report now includes SmoothingTransform
+   - The StructuredLogger contains "record_processed" events for "SmoothingTransform"
+   - The output records have a "smoothed" field
+
+3. Write a performance comparison between the pipeline with and without SmoothingTransform:
+   - Run each variant 5 times with 1000 records
+   - Measure elapsed time and peak memory for each
+   - Print the overhead introduced by SmoothingTransform: extra ms per record,
+     extra KB per 1000 records
+   - Verify the overhead is sub-linear (adding a deque-based sliding window
+     should not add O(N²) behavior)
+
+4. Write an `architectureAudit(pipeline)` function that:
+   - Accepts the assembled pipeline and introspects it using `inspect` module
+   - Prints: stage count, stage names in order, STAGE_VERSION for each,
+     method signatures for transform() on each stage
+   - Identifies any stage that has no docstring (a quality check)
+   - Identifies any stage that uses a list instead of deque for windowing
+     (inspect the source code of each stage's transform method using
+     `inspect.getsource()` and search for "deque" — warn if absent but a
+     window variable is present)
+   - Returns a quality score: (stages with docstrings) / (total stages)
+
+5. Write a conclusion comment (15-20 lines) in your code summarizing:
+   - Which patterns from the course did you find most valuable in this final project?
+   - Which patterns had the highest implementation complexity vs. architectural payoff?
+   - What would you add to the pipeline if you were deploying it in production?
+   - How would you test a pipeline stage in isolation without running the full pipeline?
+   This reflection will help you internalize the architectural lessons of the course.
+
+No solutions provided.

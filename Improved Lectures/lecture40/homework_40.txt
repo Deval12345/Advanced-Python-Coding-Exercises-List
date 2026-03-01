@@ -1,0 +1,182 @@
+Homework — Lecture 40: Big Project Stage 7 — Observability and Introspection
+
+===============================================================
+EXERCISE 1 — StructuredLogger with Filtering and Buffered Output
+===============================================================
+
+Build a production-grade StructuredLogger with log level filtering,
+contextual fields, and a buffered output option for high-throughput pipelines.
+
+Requirements:
+
+1. Extend StructuredLogger from Example 40.1 with:
+   a. A log level hierarchy: DEBUG < INFO < WARNING < ERROR < CRITICAL
+      (integer values 10, 20, 30, 40, 50 matching the logging module)
+   b. A `minLevel` constructor parameter (default: "INFO") — records below
+      this level are silently dropped without JSON encoding or I/O
+   c. A `bindContext(**fields)` method that returns a new StructuredLogger
+      that automatically merges `fields` into every event it emits
+      (e.g., logger.bindContext(stageId="ThresholdFilter") produces a logger
+      that always includes stageId in its records)
+
+2. Add a `BufferedStructuredLogger` subclass that:
+   - Accumulates records internally in a list instead of writing immediately
+   - Flushes to the underlying stream when the buffer reaches `maxBuffer` records
+     (default: 100) OR when flush() is called explicitly
+   - In __exit__ (if used as context manager) always flushes the buffer
+   - Measures and stores: totalRecordsWritten, totalFlushes, maxBufferSizeReached
+
+3. Write three pipeline stages that use bound loggers:
+   - Each stage binds its own stageId to its logger at construction time
+   - On each processed record: log at DEBUG level with record id and value
+   - On anomaly detected: log at WARNING with anomaly details
+   - On batch completion: log at INFO with throughput (records/second)
+
+4. Run the pipeline with 2000 records using BufferedStructuredLogger (minLevel="INFO").
+   After the run, print:
+   - Total log records written (DEBUG records should be excluded)
+   - Total flushes performed
+   - Confirm that all written records contain stageId and timestamp fields
+     (parse each line with json.loads and assert the fields are present)
+
+5. Run the pipeline again with minLevel="DEBUG" and compare total records written.
+   The DEBUG run should write substantially more records. Measure the wall-clock
+   difference between INFO-only logging and DEBUG logging for the same 2000-record
+   pipeline run. This demonstrates the cost of log volume in production systems.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Recursive Pipeline Introspection with inspect
+===============================================================
+
+Use Python's inspect module to build a complete self-describing pipeline
+registry that generates documentation at startup.
+
+Requirements:
+
+1. Define a base class `PipelineStage` with:
+   - A class attribute `STAGE_TYPE` (string, e.g., "filter", "transform", "sink")
+   - An abstract `process(self, inputStream)` generator method
+   - A class method `describe()` that uses inspect to return a dict:
+     {"className": ..., "stageType": ..., "docstring": ...,
+      "parameters": [{"name": ..., "default": ..., "hasDefault": ...}, ...]}
+     (parameters are from __init__ excluding self)
+
+2. Define four concrete stage classes inheriting from PipelineStage:
+   - `ThresholdFilter(minVal, maxVal)` — STAGE_TYPE="filter"
+   - `WindowNormalizer(windowSize=50)` — STAGE_TYPE="transform"
+   - `FeatureComputer(featureList)` — STAGE_TYPE="transform"
+   - `JsonSink(outputPath, prettyPrint=False)` — STAGE_TYPE="sink"
+   Each must have a proper docstring explaining what it does.
+
+3. Write a `PipelineRegistry` class that:
+   - Maintains a dict mapping stage class names to their class objects
+   - Has a `register(cls)` method (usable as a class decorator)
+   - Has a `generateManifest()` method that calls `cls.describe()` for every
+     registered class and returns a list of description dicts
+   - Has a `printManifest()` method that prints the manifest in a human-readable
+     format: class name, type, docstring, parameter table
+
+4. Write a `validatePipeline(stageList)` function that:
+   - Accepts a list of instantiated stage objects
+   - For each, uses inspect.signature to verify that process() exists and
+     accepts exactly one parameter after self (the inputStream)
+   - Checks that no two consecutive stages in the list are both "sink" type
+   - Returns a list of validation errors (empty list = valid pipeline)
+
+5. Construct two pipelines:
+   - A valid pipeline: [ThresholdFilter, WindowNormalizer, FeatureComputer, JsonSink]
+   - An invalid pipeline: [ThresholdFilter, JsonSink, JsonSink] (consecutive sinks)
+   Run validatePipeline on both and print the results.
+   Print the full manifest for all four registered stage classes.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Real-Time Health Dashboard with Alert Thresholds
+===============================================================
+
+Extend PipelineHealthDashboard from Example 40.3 with configurable
+alert thresholds and a rolling window degradation detector.
+
+Requirements:
+
+1. Add a `ThresholdConfig` dataclass with fields:
+   - minHealthyRps (float) — alert if any stage throughput drops below this
+   - maxAllowedDegraded (int) — alert if more than N consecutive degraded batches
+   - maxMemoryMb (float) — alert if memory usage exceeds this threshold
+   - maxAlertQueueSize (int) — alert if unresolved alerts exceed this count
+
+2. Extend PipelineHealthDashboard to accept a `ThresholdConfig` at construction.
+   Add a `_checkThresholds(report)` method that:
+   - Compares the health report against all thresholds
+   - Returns a list of `ThresholdViolation` objects with fields:
+     (thresholdName, actualValue, limitValue, severity: "WARNING" or "CRITICAL")
+   - CRITICAL if: any circuit breaker is open OR memory exceeds limit
+   - WARNING if: throughput below minHealthyRps OR consecutive degraded batches exceeded
+
+3. Add a `consecutiveDegradedCount` counter to the dashboard (not in health report —
+   in the dashboard state). Increment it each time a batch is DEGRADED; reset to 0
+   when a batch is HEALTHY. The threshold check uses this counter.
+
+4. Write a simulation that runs 50 batches through a 3-stage pipeline:
+   - Batches 1-15: all stages healthy (rps > 1000)
+   - Batches 16-25: Stage 2 throughput drops to 200 rps (below minHealthyRps=500)
+   - Batches 26-35: Stage 2's circuit breaker opens (DEGRADED status)
+   - Batches 36-50: full recovery
+   Print the health report and threshold violations for every 5th batch.
+
+5. Implement a `DegradationHistogram` that tracks: for each of the last 50 batches,
+   was the pipeline HEALTHY or DEGRADED? Print a text histogram at the end:
+     Batch  1-10: ##########  (10 HEALTHY)
+     Batch 11-20: ######....  (6 HEALTHY, 4 DEGRADED, . = degraded)
+     etc.
+   The histogram gives a quick visual of pipeline stability over the simulation.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Complete Observability Integration
+===============================================================
+
+Wire the full observability layer into the analytics pipeline and validate
+that all three observability tools work together coherently.
+
+Requirements:
+
+1. Build a complete 4-stage pipeline integrating all Stage 7 components:
+   a. StructuredLogger (bound per stage with stageId context field)
+   b. @measuredStage decorator from Stage 4 (throughput metrics for dashboard)
+   c. AsyncCircuitBreaker from Stage 6 wrapping Stage 3 (the compute-heavy stage)
+   d. PipelineHealthDashboard collecting metrics after each batch
+
+2. Write an `ObservabilityHarness` class that:
+   - Owns one StructuredLogger (writing to a StringIO buffer for testing)
+   - Owns one PipelineHealthDashboard with ThresholdConfig
+   - Has a `runBatch(records)` method that:
+     (a) Calls the pipeline stages sequentially
+     (b) After the batch, calls healthReport() and logs it as a structured event
+     (c) Checks thresholds and logs any violations at WARNING/CRITICAL level
+     (d) Returns the health report dict
+   - Has an `exportLogs()` method that returns all JSON log lines as a list of dicts
+
+3. Run 20 batches of 500 records each. After each batch, use exportLogs() to verify:
+   - Every batch produced at least one structured log event with "event": "batch_complete"
+   - Every circuit breaker state change produced a log with "event": "circuit_state_change"
+   - No log record is missing the "timestamp", "level", "component", or "event" fields
+
+4. At the end of 20 batches, generate a combined observability report:
+   - From StructuredLogger: total events logged per level (DEBUG/INFO/WARNING/ERROR)
+   - From @measuredStage: per-stage mean throughput and p95 latency
+   - From PipelineHealthDashboard: mean throughput over last 10 batches, overall
+     healthy ratio (healthy batches / total batches), circuit breaker open count
+
+5. Validate that the three observability tools agree on key metrics:
+   - The bottleneck stage identified by the dashboard (min throughput) should be
+     the same stage with the highest p95 latency in the @measuredStage report
+   - The circuit breaker open count in the dashboard should match the count of
+     "circuit_state_change" events in the structured log where state="open"
+   Print "OBSERVABILITY CONSISTENT" if all checks pass, or list the discrepancies.
+
+No solutions provided.

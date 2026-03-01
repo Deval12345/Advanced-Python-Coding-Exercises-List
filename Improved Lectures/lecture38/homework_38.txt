@@ -1,0 +1,145 @@
+Homework — Lecture 38: Big Project Stage 5 — Caching and Memory Discipline
+
+===============================================================
+EXERCISE 1 — Cache Effectiveness Analysis Across Access Patterns
+===============================================================
+
+Build a systematic analysis of how cache effectiveness depends on the access pattern
+(how many distinct keys exist and how uniformly they are accessed).
+
+Requirements:
+
+1. Write a function `expensiveCompute(key)` that takes an integer key and performs
+   a computation: compute `sum(math.sin(key * i) for i in range(1000))`. Add a
+   `time.sleep(0.001)` to simulate I/O overhead. Apply `@functools.lru_cache(maxsize=64)`.
+
+2. Define three access patterns over 2000 calls:
+   a. "Highly repetitive": 10 distinct keys, uniformly distributed (2000 calls / 10 keys = 200 hits each)
+   b. "Moderately repetitive": 50 distinct keys (2000 / 50 = 40 hits each)
+   c. "Sparse": 200 distinct keys (cache misses dominate — many keys exceed maxsize=64)
+
+3. For each access pattern, clear the cache, run 2000 calls with timeit (measure total time),
+   and collect cache_info(). Print: pattern name, total time (ms), hit count, miss count,
+   hit rate (%), and speedup vs. the hypothetical all-miss time (2000 × 1ms = 2000ms).
+
+4. Plot the relationship (as a formatted text table) between number of distinct keys
+   and hit rate. For patterns with > maxsize distinct keys, show that the cache is
+   continuously evicting and the hit rate drops.
+
+5. Find the "break-even point": at what number of distinct keys does the lru_cache overhead
+   (function call overhead) exceed its benefit? Hint: run the same test with @lru_cache vs.
+   without for a fast function (no sleep) and compare. At very few calls, the overhead
+   of hashing arguments may exceed the savings.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — TTL Cache with Thread-Safety Verification
+===============================================================
+
+Implement and stress-test a TTL cache under concurrent access from multiple threads.
+
+Requirements:
+
+1. Implement a `ThreadSafeTTLCache` class with the interface from Example 38.2.
+   Add one enhancement: a `getOrCompute(key, computeFn)` method that atomically
+   checks the cache and, on miss, calls `computeFn(key)`, stores the result, and
+   returns it. This must be atomic — two threads calling `getOrCompute` with the same
+   key simultaneously should result in `computeFn` being called only once (not twice).
+   Hint: check again inside the lock after acquiring it.
+
+2. Write a `SlowDatabase` class with a method `lookup(key)` that sleeps for 0.01 seconds
+   and returns `key * 2.0`. Count how many times `lookup` is called using an instance counter.
+
+3. Create a `ThreadSafeTTLCache(ttlSeconds=1.0, maxSize=20)` and a `SlowDatabase`. Launch
+   20 threads, each calling `cache.getOrCompute(key, db.lookup)` for 5 different keys
+   (from the same set of 5 keys shared across all threads) 10 times each (200 total calls).
+   All threads start simultaneously using `threading.Barrier`.
+
+4. After all threads complete, print: `db.lookup` call count (should be at most 5 — one
+   per distinct key, since the cache prevents redundant lookups), cache hit count (should
+   be close to 195), total elapsed time (should be much less than 200 × 0.01s = 2s
+   because of caching).
+
+5. Verify TTL expiry under concurrency: after the 1-second TTL expires, run another
+   20 threads making the same calls. Now `db.lookup` should be called 5 more times
+   (cache entries expired). Print the total lookup count after both rounds and verify
+   it is exactly 10 (5 per round, 2 rounds).
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Bounded Pipeline Memory Audit
+===============================================================
+
+Build a complete pipeline with multiple bounded components and verify that total
+memory usage is stable and bounded using tracemalloc.
+
+Requirements:
+
+1. Define three bounded pipeline components:
+   a. `BoundedInputBuffer`: holds the last 200 incoming records (deque(maxlen=200))
+   b. `BoundedFeatureCache`: caches the last 50 computed feature vectors using a dict with
+      manual eviction (when size > 50, delete the entry with the oldest insertion time)
+   c. `BoundedAlertLog`: stores the last 100 alert dicts (deque(maxlen=100))
+   All three should use `__slots__`.
+
+2. Write a `runPipelineBatch(inputBuffer, featureCache, alertLog, records)` function
+   that: (a) pushes each record into inputBuffer; (b) computes features for each record
+   (use sensorId as cache key; features = {"mean": mean of last 20 values for this sensor,
+   "var": variance}); (c) checks if the feature mean exceeds 65.0 and logs to alertLog.
+
+3. Set up a continuous simulation: run 10 batches of 300 records each (3000 total records)
+   using the same buffer, cache, and log objects. Take a tracemalloc snapshot after each
+   batch. Print the net memory allocation for each batch.
+
+4. Verify: after the first batch (when structures fill up), the net memory allocation per
+   batch should be approximately constant (bounded structures stop growing). If unbounded,
+   memory grows linearly with batch number. Print whether the memory per batch is
+   "stable" (variance < 20% of mean after the first 3 batches) or "growing".
+
+5. Deliberately break the bound: replace BoundedFeatureCache's manual eviction with an
+   unbounded dict. Re-run 10 batches and show the memory growth per batch. Compare the
+   "bounded" and "unbounded" memory profiles side by side.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Comprehensive Caching Layer for the Analytics Engine
+===============================================================
+
+Integrate a complete caching layer into the analytics pipeline that combines lru_cache,
+TTL cache, and bounded accumulators with measurement and monitoring.
+
+Requirements:
+
+1. Define a `CachingLayer` class that encapsulates three caches:
+   a. `_calibrationCache = lru_cache(maxsize=32)` applied to `getCalibration(sensorId)` —
+      a pure function returning calibration parameters
+   b. `_schemaCache = TTLCache(ttlSeconds=30.0, maxSize=10)` for schema validation results
+      (schema may be updated, so TTL prevents indefinite caching of old results)
+   c. `_alertHistory = BoundedAlertAccumulator(maxAlerts=1000)` from Example 38.3
+
+2. Write a method `processRecord(record)` that:
+   a. Gets calibration via `_calibrationCache` and applies it
+   b. Validates the record schema using `_schemaCache` (cache the validation result for the
+      record type, not the record itself — record types are: "temperature", "pressure", "humidity")
+   c. Checks the calibrated value against the threshold using `_alertHistory`
+   d. Returns the processed record with calibrated value and schema-valid flag
+
+3. Process 10,000 records through `CachingLayer.processRecord`. After completion, print a
+   "cache health report":
+   - Calibration cache: hit rate, miss count, cache size
+   - Schema cache: total get calls, hit count, miss count (add counters to TTLCache)
+   - Alert history: totalTriggered, currentlyStored, maxCapacity
+
+4. Add a `CachingLayer.evictStaleEntries()` method that: (a) calls `calibrationCache.cache_clear()`
+   if more than 60 seconds have elapsed since the last clear, and (b) manually removes
+   expired entries from the schema TTL cache. Call this method every 100 records.
+
+5. Measure memory footprint of the complete CachingLayer using `sys.getsizeof` and
+   `tracemalloc` before and after processing 10,000 records. Print the CachingLayer's
+   memory contribution and confirm it is within an acceptable bound (e.g. < 500 KB for
+   the full 10,000 record run).
+
+No solutions provided.

@@ -1,0 +1,189 @@
+Homework — Lecture 44: Course Wrap-Up and What Comes Next
+
+===============================================================
+EXERCISE 1 — Architecture Audit: Map Your Own Codebase to the Six Layers
+===============================================================
+
+Reflect on a Python project you have written (homework solution, personal
+project, or work code) and analyze it against the six-layer architecture
+used by the Pluggable Analytics Engine.
+
+Requirements:
+
+1. Choose any Python project you have written that is at least 100 lines of code.
+   If you do not have one, use the complete analytics engine you built across
+   Stages 1–8. Write a brief (3–5 sentence) description of what the project does.
+
+2. For each of the six architectural layers, identify whether your project
+   has an equivalent layer — even if not explicitly labeled:
+   - Layer 1 (Data model / memory): Does your project define custom classes
+     with magic methods, __slots__, or TypedDict schemas?
+   - Layer 2 (Control flow): Does it use decorators, context managers, or closures?
+   - Layer 3 (Iteration): Does it use generators for lazy data transport?
+   - Layer 4 (Concurrency): Does it use asyncio, threads, or processes?
+   - Layer 5 (Observability): Does it have logging, metrics, or profiling?
+   - Layer 6 (Extensibility): Does it use __init_subclass__, metaclasses, or Protocol?
+   For each layer: "Present", "Partial", or "Absent". If Absent, explain why
+   it might not be needed for this particular project.
+
+3. For every "Absent" layer, write a brief (2–3 sentence) description of what
+   you would add if the project needed to scale to production. This is not
+   implementation — it is architectural design thinking.
+
+4. Identify the single biggest architectural gap in your project: which layer
+   is most important for the project's goals but currently absent? Write a
+   1-paragraph design proposal for adding that layer, including: what mechanism
+   you would use (e.g., @retryWithBackoff for resilience), what failure mode it
+   prevents, and how you would verify it works.
+
+5. Write a 10-15 line reflection: what was the hardest concept to understand
+   in this course, and why? What was the moment when it "clicked"? How has
+   your understanding of Python changed compared to when you started?
+   Be honest — there are no wrong answers. This reflection is for your own
+   future reference.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Benchmark the Full Pipeline: Before and After Each Layer
+===============================================================
+
+Measure the cost and benefit of each architectural layer by building the
+pipeline incrementally and benchmarking at each step.
+
+Requirements:
+
+1. Build six versions of the same pipeline (1000 records):
+   - V1: Bare minimum — a single for loop, no classes, no generators, no measurement
+   - V2: V1 + generator composition (ThresholdFilter and WindowNormalizer as generators)
+   - V3: V2 + @measuredStage decorator on each stage
+   - V4: V3 + StructuredLogger writing to a StringIO buffer (every record logged)
+   - V5: V4 + tracemalloc memory tracking wrapper
+   - V6: V5 + __init_subclass__ registry (ConsoleSink auto-registers itself)
+   Each version adds exactly one architectural layer.
+
+2. Benchmark each version using timeit (10 repetitions) and record:
+   - Mean elapsed time (ms)
+   - Peak memory (KB from tracemalloc)
+   Print a table: version, mean_ms, peak_kb, overhead_vs_V1 (%)
+
+3. Measure the value delivered by each layer. For Layer 4 (observability),
+   run V3 (without logging) and V4 (with logging) and compare:
+   - Time to detect a "slow batch" (you inject a simulated 50ms delay in one
+     batch) — can you detect it without the measuredStage report?
+   - Time to answer: "What was the throughput of ThresholdFilter in batch 7?"
+   V3 cannot answer this. V4 can. Print the answer for V4.
+
+4. Measure the cost of logging verbosity. Run V4 with three log levels:
+   - minLevel="DEBUG" (every record logged)
+   - minLevel="INFO" (only batch summaries logged)
+   - minLevel="WARNING" (only threshold violations logged)
+   For each: total log records written, elapsed time (ms). Print the table.
+   The result should show that DEBUG logging adds measurable overhead.
+
+5. Based on your measurements, write a comment (10–15 lines) recommending:
+   - Which layers are zero-cost and should always be included
+   - Which layers have measurable overhead and should be configurable
+   - Which layers should be disabled in high-throughput production paths
+   and the threshold (records/second, data size, etc.) at which each layer's
+   overhead becomes significant. Ground every recommendation in your measurements.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Extend the Pipeline: Add a New Stage with Zero Existing Code Changes
+===============================================================
+
+Implement a new stage type that was not in the original pipeline and verify
+that the six-layer architecture accepts it without any modification to existing files.
+
+Requirements:
+
+1. Design and implement an `OutlierFlaggingStage`:
+   - STAGE_NAME = "OutlierFlaggingStage"
+   - Accepts records with a "normalized" field (output of WindowNormalizer)
+   - Uses a 3-standard-deviation rule: compute a rolling mean and std of
+     "normalized" values in the last 100 records (deque maxlen=100)
+   - Flags records where |normalized - rolling_mean| > 3 * rolling_std as
+     outliers by adding "isOutlier": True to the record dict
+   - Non-outliers get "isOutlier": False
+   - For the first 3 records (before enough data for a std estimate), always
+     set "isOutlier": False
+
+2. Register the stage by inheriting from the registry base class. Confirm that:
+   - listStages() now includes "OutlierFlaggingStage" in its output
+   - The stage can be instantiated via buildFromConfig({"stage": "OutlierFlaggingStage"})
+   - The inspect-based manifest (from Example 44.2) includes the new stage
+     with its correct docstring and parameter list
+
+3. Insert OutlierFlaggingStage between WindowNormalizer and ConsoleSink in the
+   pipeline config list. Run with 1000 records. Verify:
+   - OutlierFlaggingStage appears in the @measuredStage throughput report
+   - Every output record has the "isOutlier" key (parse a sample of 20 records)
+   - The fraction of outliers is approximately 0.3% (3-sigma rule predicts this
+     for Gaussian data) — verify that the actual fraction is within 1% of expected
+
+4. Write a negative test: attempt to register a stage class that is missing the
+   `STAGE_NAME` attribute and one that is missing the `transform` method.
+   Confirm that `RegistrationError` is raised with a descriptive message in both
+   cases. The registry must refuse malformed stages at registration time, not
+   at runtime when data flows.
+
+5. Measure the performance impact of the new stage:
+   - Run the pipeline without OutlierFlaggingStage (4 stages total)
+   - Run with OutlierFlaggingStage inserted (5 stages total)
+   - Compare elapsed time and peak memory for 5000 records (10 repetitions)
+   - Compute: additional ms per record, additional KB per 1000 records
+   - Verify the overhead is O(1) per record (the deque maxlen=100 means the
+     rolling window computation does not grow with stream length)
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Final Project: End-to-End Pipeline with a Real Dataset
+===============================================================
+
+Apply every architectural layer to a real-world dataset — not synthetic data —
+and generate a production-quality observability report.
+
+Requirements:
+
+1. Choose one of the following real data sources (all freely available):
+   a. The UCI Machine Learning Repository "Air Quality" dataset (CSV format):
+      hourly measurements of CO, NOx, temperature, humidity from an Italian city
+   b. NOAA Global Surface Summary of Day (GSOD) weather CSV files
+   c. Any CSV or JSON dataset from a public API (OpenWeather historical, etc.)
+   Write a `CsvFileSource` class that reads the dataset as a generator, yielding
+   one dict per row, with appropriate field names and types.
+
+2. Build the complete pipeline for this dataset:
+   - Filter for records where the primary measurement is within a valid range
+     (define the valid range based on the dataset — e.g., CO concentration 0–20 ppm)
+   - Normalize the primary measurement using the WindowNormalizer (window=100)
+   - Flag outliers using the OutlierFlaggingStage from Exercise 3
+   - Write all records to a JSON output file using JsonFileSink
+   - Write all outlier records (isOutlier==True) to a separate "alerts" JSON file
+
+3. Wrap the entire run with the ObservabilityHarness from Lecture 40:
+   - StructuredLogger writing to a log file (not just StringIO)
+   - PipelineHealthDashboard collecting metrics after each batch of 1000 records
+   - @measuredStage reports for every stage
+
+4. Generate the final observability report containing:
+   - Dataset: source file name, total records in source, total records processed
+   - Per-stage: records in, records out, mean latency (ms), p95 latency (ms),
+     throughput (records/second)
+   - Outlier analysis: count, fraction, top 5 most extreme outlier values with timestamps
+   - Performance: total elapsed time, peak memory (KB), throughput (records/second overall)
+   - Health: final pipeline status (HEALTHY/DEGRADED), circuit breaker open count,
+     number of threshold violations detected during the run
+
+5. Write a 1-page (200–300 word) analysis of what you found:
+   - What fraction of the real dataset is flagged as outliers? Does this match
+     the 3-sigma expectation for Gaussian data, or is the distribution non-Gaussian?
+   - Which stage was the bottleneck? Does this make sense given what each stage does?
+   - What would you add to the pipeline if this were a real production system?
+     (Data validation? Schema migration? Alerting to an external system?)
+   Write this analysis as a multi-line comment at the top of your solution file.
+
+No solutions provided.

@@ -1,0 +1,162 @@
+Homework — Lecture 39: Big Project Stage 6 — Resilience Layer
+
+===============================================================
+EXERCISE 1 — Retry Decorator with Statistics and Exception Filtering
+===============================================================
+
+Build an enhanced retry decorator that collects statistics and supports exception
+filtering (retry only specific exception types).
+
+Requirements:
+
+1. Write a class `RetryStats` with __slots__: totalAttempts (int), successfulRetries (int),
+   permanentFailures (int), totalDelaySeconds (float). Methods: record_attempt(success, delay),
+   successRate() → float (successful retries / total permanent failures attempts),
+   summary() → dict with all stats.
+
+2. Write a `RetryRegistry` — a module-level dict mapping function names to their
+   `RetryStats` instances. When any decorated function runs, its stats are recorded.
+   Provide a `printRetryReport()` function that prints all registered function stats.
+
+3. Write a `smartRetry(maxAttempts, baseDelay, exceptions, name)` decorator factory that:
+   a. Creates or looks up a `RetryStats` in `RetryRegistry` for the given name
+   b. Catches only exceptions in the `exceptions` tuple; propagates all others immediately
+   c. On each failure, records the attempt and the delay in `RetryStats`
+   d. On success, records success and returns the result
+   e. After all retries exhausted, records permanent failure and re-raises
+
+4. Define four functions that can fail:
+   - `fetchUserProfile(userId)`: raises `TimeoutError` 50% of the time
+   - `queryDatabase(query)`: raises `DatabaseConnectionError` (custom) 40% of the time
+   - `callExternalAPI(endpoint)`: raises `HTTPError` (custom) 60% of the time
+   - `readLocalFile(path)`: raises `FileNotFoundError` 20% of the time (should NOT be retried)
+   Apply @smartRetry to each, with appropriate `exceptions` tuples. For `readLocalFile`,
+   use exceptions=(TimeoutError,) so FileNotFoundError propagates immediately.
+
+5. Call each function 20 times. After all calls, print the RetryReport showing per-function
+   stats: total calls, success rate, average delay per permanent failure, total delay accumulated.
+   Verify that readLocalFile has a 0% retry rate (all FileNotFoundErrors propagate immediately).
+
+No solutions provided.
+
+===============================================================
+EXERCISE 2 — Async Circuit Breaker with Metrics
+===============================================================
+
+Extend the AsyncCircuitBreaker from Example 39.2 with detailed metrics and
+demonstrate the full state-machine transition cycle.
+
+Requirements:
+
+1. Add a `CircuitBreakerMetrics` dataclass to `AsyncCircuitBreaker` that tracks:
+   - totalCalls (int), successCalls (int), failureCalls (int)
+   - circuitOpenCount (int) — how many times the circuit transitioned to OPEN
+   - fastFailCount (int) — how many calls failed fast due to open circuit
+   - probeSuccessCount (int), probeFailCount (int)
+
+2. Update `AsyncCircuitBreaker.call()` to record metrics on every call:
+   - Increment totalCalls on every entry
+   - Increment successCalls / failureCalls based on outcome
+   - Increment fastFailCount when CircuitOpenError is raised
+   - Increment circuitOpenCount when state transitions to "open"
+   - Increment probeSuccessCount / probeFailCount on half_open outcomes
+
+3. Write a `reportStatus()` method that prints a formatted status report:
+   - Current state (CLOSED/OPEN/HALF_OPEN)
+   - Success rate (successCalls / totalCalls)
+   - Fast-fail rate (fastFailCount / totalCalls)
+   - Number of circuit opens since creation
+   - Time since last failure (seconds)
+
+4. Create a simulation: a `FlappingService` that is reliable for the first 5 seconds,
+   then fails consistently for 3 seconds (simulating a crash), then recovers.
+   Run 30 sequential calls at 0.5-second intervals, printing reportStatus() every 5 calls.
+   Observe: circuit closes initially; opens during the crash; probes; closes on recovery.
+
+5. Extend the breaker to support a "half-open success count" threshold: instead of
+   closing after one successful probe, require N (default: 2) consecutive successful
+   probes before closing. This prevents false recovery from a single lucky request.
+   Re-run the simulation and observe more conservative recovery behavior.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 3 — Graceful Degradation with Fallback Strategies
+===============================================================
+
+Implement three different degradation strategies and compare their behavior
+under the same failure scenarios.
+
+Requirements:
+
+1. Define a base class `DegradationStrategy` with an abstract method
+   `handleFailure(sensorId, exception)` that returns a dict with sensor reading data.
+   Implement three concrete strategies:
+   a. `DropStrategy`: returns None (caller must handle missing data)
+   b. `LastKnownGoodStrategy`: stores the last successful reading per sensorId in a dict;
+      on failure, returns the last known value with a "stale": True flag
+   c. `InterpolatedStrategy`: stores the last 3 successful readings per sensorId;
+      on failure, returns the mean of the last 3 readings with a "interpolated": True flag
+      (if fewer than 3 readings, uses what is available)
+
+2. Write an async `readSensorWithStrategy(sensorId, strategy, failProb)` function that
+   attempts to read the sensor (sleeps 0.05s, fails with failProb probability), calls
+   `strategy.handleFailure(sensorId, exception)` on failure, and returns the result.
+
+3. Run a 5-sensor pipeline for 10 batches with each of the three strategies.
+   Sensors S1 and S3 have failProb=0.8 (frequently failing). Sensors S0, S2, S4 have
+   failProb=0.1 (mostly reliable). Print per-batch results for each strategy, showing
+   how many readings were available, stale, interpolated, or dropped.
+
+4. Compute and compare metrics across the 10 batches for each strategy:
+   a. Total readings delivered (non-None) per strategy
+   b. Average freshness (fraction of readings that were live, not stale/interpolated)
+   c. Worst-case batch: minimum readings available across all 10 batches
+
+5. Conclude with a recommendation: for which use cases is each strategy appropriate?
+   (DropStrategy for when stale data is worse than missing data; LastKnownGood for
+   slowly-changing physical values; Interpolated for smoothly-varying signals.)
+   Write your conclusion as a formatted comment in the code.
+
+No solutions provided.
+
+===============================================================
+EXERCISE 4 — Complete Resilience Layer Integration
+===============================================================
+
+Integrate all three resilience patterns into the analytics pipeline and test
+them under simulated failure conditions.
+
+Requirements:
+
+1. Define a `ResilientSensorClient` that wraps sensor access with the full stack:
+   a. A `@retryWithBackoff(maxAttempts=3, baseDelaySeconds=0.05)` on the raw read method
+   b. An `AsyncCircuitBreaker(failureThreshold=5, resetTimeoutSeconds=3.0)` wrapping
+      the retry-decorated method
+   c. A `LastKnownGoodStrategy` as the graceful degradation fallback
+   The `read(sensorId)` method should: attempt the full retry+circuit-breaker path;
+   on CircuitOpenError or all-retries-exhausted, call strategy.handleFailure()
+
+2. Create 5 `ResilientSensorClient` instances with different failure behaviors:
+   - S0: failProb=0.1 (reliable)
+   - S1: failProb=0.5 (intermittently failing — should trigger retries)
+   - S2: failProb=0.95 (almost always failing — should open circuit)
+   - S3: failProb=0.0 (perfectly reliable)
+   - S4: fails for the first 15 calls then recovers (failProb=0.9 then 0.0)
+
+3. Run 30 batches of 5-sensor collection (asyncio.gather of all 5 clients).
+   For each batch, print: batch number, health status per sensor (live / stale / fast-fail),
+   circuit breaker state per sensor, number of live readings in this batch.
+
+4. After all 30 batches, print a summary:
+   - Per sensor: live rate (%), stale rate (%), fast-fail rate (%), total retries
+   - Per batch: was the batch degraded? How many sensors were live?
+   - Circuit breaker: how many times did each sensor's breaker open? When did it probe?
+   - S4 recovery: at which batch did S4's circuit close after the simulated recovery?
+
+5. Measure and print the total wall-clock time for 30 batches with the full resilience layer
+   vs. a naive version (no retries, no circuit breaker, no fallback — just fail on error).
+   The resilience layer should have similar or slightly higher latency per successful batch,
+   but significantly more successful batches overall.
+
+No solutions provided.
