@@ -12,7 +12,7 @@ Master it, and you master the language.
 
 Let us begin!
 
-Think about this. Every time you call len on something in Python, or loop through a list with a for loop, or check if an item is inside a collection, Python is not just calling a simple function. It is reaching into your object and asking a very specific question. Does this object know how to answer?
+Think about this. Every time you call len on something in Python, or loop through a list with a for loop, or check if an item is inside a collection, Python is not just calling a simple function. It is reaching into your object and asking a very specific question: Does this object know how to answer?
 
 This is the foundation of the Python Data Model. Python was designed as a framework, and the objects you create are the plugins. And this is a deliberate architectural choice. Instead of giving you a fixed set of data types and saying, Here, use only these, it gives you a protocol. Implement specific special methods, and your objects become first-class citizens of the language.
 
@@ -20,13 +20,13 @@ Now why does this matter in industry?
 
 Imagine you are building a data pipeline at a fintech company. You need custom data structures that behave exactly like Python lists or dictionaries, but underneath they connect to a database or stream data from an API.
 
-Because of the Data Model, you can build these objects, and every Python library, every framework, every tool built by you or any other team already knows how to work with them. If it works with Python’s built-in lists and dictionaries, it will work with your custom objects. No special adapters. No translation layers.
+Because of the Data Model, you can build these objects, and every Python library, every framework, every tool built by you or any other team already knows how to work with them. If it works with Python’s built-in lists and dictionaries, it will work with your custom objects; No special adapters. No translation layers.
 
 This is not a theoretical exercise. jango QuerySets work this way. Pandas DataFrames work this way. PyTorch tensors work this way. The biggest, most battle tested Python projects in the world are built on exactly this principle.
 
 Now let me show you a concrete example that makes this real. Imagine you are building an inventory management system. You have a collection of products, and you want this collection to behave like a native Python sequence.
 
-Here is our ProductCatalog class. Inside the special dunder method init, we store a list of products in an instance variable called itemList. Now here is the key. We define three special methods. Special dunder method len returns the length of itemList. Special dunder method getitem accepts an index parameter and returns the item at that position in itemList. And special dunder method contains accepts a productName parameter and checks whether any product in itemList has a matching name.
+Here is our ProductCatalog class. Inside the special dunder method init, we store a list of products in an instance variable called itemList. Now here is the key: We define three special methods. Special dunder method len returns the length of itemList. Special dunder method getitem accepts an index parameter and returns the item at that position in itemList. And special dunder method contains accepts a productName parameter and checks whether any product in itemList has a matching name.
 
 Now watch what happens. We create a catalog, and without any extra work, we can call len on it, we can use square bracket indexing, and we can use the in operator. Python sees these operations, looks for the corresponding special methods, and calls them automatically. Our custom object behaves exactly like a built in type.
 
@@ -34,7 +34,7 @@ Now let us go deeper into these special methods, because understanding them indi
 
 Special dunder method len. When you call len on any object, Python looks specifically for this method. This is your object's answer to the question, how big are you? In a machine learning pipeline, you might have a Dataset class that wraps thousands of training samples stored across multiple files. By implementing special dunder method len, your Dataset object can tell a DataLoader exactly how many samples it contains, and the DataLoader never needs to know whether those samples are in memory, on disk, or streaming from a remote server.
 
-Special dunder method getitem. This is the method behind square bracket access. When you write myObject at position five, Python calls special dunder method getitem with five as the argument. But here is where it gets interesting. If you implement special dunder method getitem, Python automatically gives your object two additional capabilities for free. It becomes iterable, meaning you can use it in a for loop, and it becomes compatible with slicing. One method, three behaviors.
+Special dunder method getitem. This is the method behind square bracket access. When you write myObject at position five, Python calls special dunder method getitem with five as the argument. But here is where it gets interesting. If you implement special dunder method getitem, Python automatically gives your object two additional capabilities for free. It becomes iterable, meaning you can use it in a for loop, and it becomes compatible with slicing. One method; three behaviors.
 
 Think about this in a web backend context. You could build a PaginatedResults class that fetches data from an API page by page. Implement special dunder method getitem, and suddenly your results object supports indexing, iteration, and slicing, all backed by lazy network calls. The consumer of your class does not need to know about pagination at all.
 
