@@ -18,7 +18,7 @@ Let us begin.
 
 Think about this. Every time you write len of something in Python, or loop through a list with a for loop, or check if an item is inside a collection, Python is not just calling a simple function. It is reaching into your object and asking a very specific question. Does this object know how to answer?
 
-This is the foundation of the Python Data Model. Python was designed as a framework, and the objects you create are the plugins. The language designers, Guido van Rossum and the core team, made a deliberate architectural choice. Instead of giving you a fixed set of data types and saying here, use only these, they gave you a protocol. Implement specific special methods, and your objects become first class citizens of the language.
+This is the foundation of the Python Data Model. Python was designed as a framework, and the objects you create are the plugins. And this is a deliberate architectural choice. Instead of giving you a fixed set of data types and saying, Here, use only these, it gives you a protocol. Implement specific special methods, and your objects become first-class citizens of the language.
 
 Now why does this matter in industry? Imagine you are building a data pipeline at a fintech company. You need custom data structures that behave exactly like Python lists or dictionaries, but underneath they connect to a database or stream data from an API. Because of the data model, you can build these objects and every Python library, every framework, every tool already knows how to work with them. No special adapters. No translation layers. Your custom object just works with for loops, with len, with the in operator, with everything.
 
