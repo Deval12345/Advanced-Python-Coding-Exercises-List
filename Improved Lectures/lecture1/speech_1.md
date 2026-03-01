@@ -1,4 +1,4 @@
-Welcome to the lecture on the Data Model.
+Welcome to the lecture on the Data Model!
 
 Before we write a single line of code, I want you to think about something. What separates a Python developer who builds production systems at Google, or architects data pipelines at a hedge fund, from someone who just knows the syntax?
 
@@ -10,7 +10,7 @@ It is understanding the machine underneath.
 At the core of Python is the Data Model.
 Master it, and you master the language.
 
-Let us begin.
+Let us begin!
 
 Think about this. Every time you call len on something in Python, or loop through a list with a for loop, or check if an item is inside a collection, Python is not just calling a simple function. It is reaching into your object and asking a very specific question. Does this object know how to answer?
 
